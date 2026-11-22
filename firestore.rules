@@ -1,0 +1,774 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Phase 3: Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'johnnwaccbmw@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isStringBounded(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalStringBounded(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isStringListBounded(listVal, maxItems) {
+      return listVal is list && listVal.size() <= maxItems && (listVal.size() == 0 || listVal[0] is string);
+    }
+
+    function isValidUserPublic(data, userId) {
+      return data.keys().hasAll(['uid', 'username', 'displayName', 'points', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid', 'username', 'displayName', 'avatarUrl', 'bio',
+          'favoriteTeams', 'favoriteNationalTeams', 'favoriteLeagues', 'favoritePlayers',
+          'favoriteCountry', 'favoriteCity', 'favoritePosition',
+          'points', 'achievements', 'online', 'lastSeen', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && isStringBounded(data.username, 2, 32)
+        && data.username.matches('^[a-zA-Z0-9_]+$')
+        && isStringBounded(data.displayName, 1, 64)
+        && isOptionalStringBounded(data, 'avatarUrl', 512)
+        && isOptionalStringBounded(data, 'bio', 280)
+        && (!('favoriteTeams' in data) || isStringListBounded(data.favoriteTeams, 20))
+        && (!('favoriteNationalTeams' in data) || isStringListBounded(data.favoriteNationalTeams, 10))
+        && (!('favoriteLeagues' in data) || isStringListBounded(data.favoriteLeagues, 15))
+        && (!('favoritePlayers' in data) || isStringListBounded(data.favoritePlayers, 20))
+        && isOptionalStringBounded(data, 'favoriteCountry', 64)
+        && isOptionalStringBounded(data, 'favoriteCity', 64)
+        && isOptionalStringBounded(data, 'favoritePosition', 32)
+        && data.points is int && data.points >= 0 && data.points <= 10000000
+        && (!('achievements' in data) || isStringListBounded(data.achievements, 30))
+        && (!('online' in data) || data.online is bool)
+        && (!('lastSeen' in data) || data.lastSeen is timestamp)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid', 'email', 'language', 'theme',
+          'notifGoals', 'notifKickoff', 'notifFinal', 'notifRedCards',
+          'notifNews', 'notifFriends', 'notifGroups', 'notifQuiz',
+          'blockedUids', 'updatedAt'
+        ])
+        && data.uid == userId
+        && isStringBounded(data.email, 3, 254)
+        && (!('language' in data) || data.language in ['en', 'ar'])
+        && (!('theme' in data) || data.theme in ['dark', 'light'])
+        && (!('notifGoals' in data) || data.notifGoals is bool)
+        && (!('notifKickoff' in data) || data.notifKickoff is bool)
+        && (!('notifFinal' in data) || data.notifFinal is bool)
+        && (!('notifRedCards' in data) || data.notifRedCards is bool)
+        && (!('notifNews' in data) || data.notifNews is bool)
+        && (!('notifFriends' in data) || data.notifFriends is bool)
+        && (!('notifGroups' in data) || data.notifGroups is bool)
+        && (!('notifQuiz' in data) || data.notifQuiz is bool)
+        && (!('blockedUids' in data) || isStringListBounded(data.blockedUids, 100))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'fromName', 'toName', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['fromUid', 'toUid', 'fromName', 'toName', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.fromUid)
+        && isValidId(data.toUid)
+        && data.fromUid != data.toUid
+        && isStringBounded(data.fromName, 1, 64)
+        && isStringBounded(data.toName, 1, 64)
+        && data.status in ['pending', 'accepted', 'rejected']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendStreak(data) {
+      return data.keys().hasAll(['userA', 'userB', 'nameA', 'nameB', 'participantIds', 'count', 'bestCount', 'lastSenderId', 'lastActiveDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userA', 'userB', 'nameA', 'nameB', 'participantIds', 'count', 'bestCount', 'lastSenderId', 'lastActiveDate', 'todaySenders', 'badges', 'createdAt', 'updatedAt'])
+        && isValidId(data.userA)
+        && isValidId(data.userB)
+        && data.userA != data.userB
+        && isStringBounded(data.nameA, 1, 64)
+        && isStringBounded(data.nameB, 1, 64)
+        && data.participantIds is list && data.participantIds.size() == 2 && data.participantIds[0] is string && data.participantIds[1] is string
+        && data.count is int && data.count >= 0 && data.count <= 10000
+        && data.bestCount is int && data.bestCount >= 0 && data.bestCount <= 10000
+        && isValidId(data.lastSenderId)
+        && isStringBounded(data.lastActiveDate, 4, 16)
+        && (!('todaySenders' in data) || isStringListBounded(data.todaySenders, 2))
+        && (!('badges' in data) || isStringListBounded(data.badges, 15))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChatRoom(data) {
+      return data.keys().hasAll(['type', 'name', 'createdBy', 'participantIds', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'type', 'name', 'clubTag', 'avatarUrl', 'backgroundTheme',
+          'pinnedMessageIds', 'readBy', 'createdBy', 'participantIds',
+          'lastMessage', 'createdAt', 'updatedAt'
+        ])
+        && data.type in ['direct', 'group', 'channel']
+        && isStringBounded(data.name, 1, 80)
+        && isOptionalStringBounded(data, 'clubTag', 40)
+        && isOptionalStringBounded(data, 'avatarUrl', 200000)
+        && isOptionalStringBounded(data, 'backgroundTheme', 40)
+        && (!('pinnedMessageIds' in data) || isStringListBounded(data.pinnedMessageIds, 10))
+        && (!('readBy' in data) || (data.readBy is map && data.readBy.size() <= 50))
+        && isValidId(data.createdBy)
+        && isStringListBounded(data.participantIds, 50)
+        && isOptionalStringBounded(data, 'lastMessage', 500)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['senderId', 'senderName', 'text', 'mediaType', 'createdAt'])
+        && data.keys().hasOnly([
+          'senderId', 'senderName', 'text', 'mediaType', 'mediaData',
+          'metadata', 'replyToId', 'reactions', 'readBy', 'pinned',
+          'deleted', 'editedAt', 'createdAt'
+        ])
+        && isValidId(data.senderId)
+        && isStringBounded(data.senderName, 1, 64)
+        && data.text is string && data.text.size() <= 2000
+        && data.mediaType in ['text', 'image', 'video', 'voice', 'card', 'sticker', 'match', 'news', 'invite']
+        && isOptionalStringBounded(data, 'mediaData', 200000)
+        && isOptionalStringBounded(data, 'metadata', 4000)
+        && isOptionalStringBounded(data, 'replyToId', 128)
+        && (!('reactions' in data) || (data.reactions is map && data.reactions.size() <= 25))
+        && (!('readBy' in data) || isStringListBounded(data.readBy, 50))
+        && (!('pinned' in data) || data.pinned is bool)
+        && (!('deleted' in data) || data.deleted is bool)
+        && (!('editedAt' in data) || data.editedAt is timestamp)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidCardCollection(data, userId) {
+      return data.keys().hasAll(['userId', 'cardCounts', 'dreamFormation', 'dreamSlots', 'packsOpened', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'cardCounts', 'dreamFormation', 'dreamSlots', 'packsOpened', 'achievements', 'createdAt', 'updatedAt'])
+        && data.userId == userId
+        && isValidId(data.userId)
+        && data.cardCounts is map && data.cardCounts.size() <= 150
+        && data.dreamFormation in ['4-3-3', '4-4-2', '3-5-2', '4-2-3-1']
+        && isStringListBounded(data.dreamSlots, 11)
+        && data.packsOpened is int && data.packsOpened >= 0 && data.packsOpened <= 100000
+        && (!('achievements' in data) || isStringListBounded(data.achievements, 30))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCardTrade(data) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'fromName', 'toName', 'offeredCardId', 'requestedCardId', 'status', 'fromSettled', 'toSettled', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['fromUid', 'toUid', 'fromName', 'toName', 'offeredCardId', 'requestedCardId', 'fairnessNote', 'status', 'fromSettled', 'toSettled', 'createdAt', 'updatedAt'])
+        && isValidId(data.fromUid)
+        && isValidId(data.toUid)
+        && data.fromUid != data.toUid
+        && isStringBounded(data.fromName, 1, 64)
+        && isStringBounded(data.toName, 1, 64)
+        && isStringBounded(data.offeredCardId, 1, 64)
+        && isStringBounded(data.requestedCardId, 1, 64)
+        && isOptionalStringBounded(data, 'fairnessNote', 200)
+        && data.status in ['pending', 'accepted', 'rejected', 'cancelled']
+        && data.fromSettled is bool
+        && data.toSettled is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGameChallenge(data) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'fromName', 'toName', 'gameType', 'status', 'fromScore', 'toScore', 'seed', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['fromUid', 'toUid', 'fromName', 'toName', 'gameType', 'status', 'fromScore', 'toScore', 'winnerUid', 'seed', 'createdAt', 'updatedAt'])
+        && isValidId(data.fromUid)
+        && isValidId(data.toUid)
+        && data.fromUid != data.toUid
+        && isStringBounded(data.fromName, 1, 64)
+        && isStringBounded(data.toName, 1, 64)
+        && data.gameType in ['penalty', 'quiz', 'higher_lower', 'card_battle', 'guess_player', 'guess_club']
+        && data.status in ['pending', 'accepted', 'completed', 'declined']
+        && data.fromScore is int && data.fromScore >= 0 && data.fromScore <= 10000
+        && data.toScore is int && data.toScore >= 0 && data.toScore <= 10000
+        && isOptionalStringBounded(data, 'winnerUid', 128)
+        && data.seed is int && data.seed >= 0 && data.seed <= 10000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPoll(data) {
+      return data.keys().hasAll(['category', 'title', 'options', 'counts', 'totalVotes', 'closesAt', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['category', 'title', 'options', 'counts', 'totalVotes', 'closesAt', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.category in ['potm', 'poty', 'gotw', 'best_team', 'young_player', 'match_winner', 'community']
+        && isStringBounded(data.title, 3, 160)
+        && data.options is list && data.options.size() >= 2 && data.options.size() <= 10 && data.options[0] is string
+        && data.counts is list && data.counts.size() == data.options.size() && data.counts[0] is int
+        && data.totalVotes is int && data.totalVotes >= 0 && data.totalVotes <= 10000000
+        && data.closesAt is timestamp
+        && isValidId(data.createdBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPollVote(data, voterId) {
+      return data.keys().hasAll(['userId', 'optionIndex', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'optionIndex', 'createdAt'])
+        && data.userId == voterId
+        && isValidId(data.userId)
+        && data.optionIndex is int && data.optionIndex >= 0 && data.optionIndex < 10
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFantasyTeam(data, userId) {
+      return data.keys().hasAll(['userId', 'teamName', 'formation', 'playerIds', 'totalPoints', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'teamName', 'formation', 'playerIds', 'captainId', 'leagueCode', 'totalPoints', 'createdAt', 'updatedAt'])
+        && data.userId == userId
+        && isValidId(data.userId)
+        && isStringBounded(data.teamName, 2, 50)
+        && data.formation in ['4-3-3', '4-4-2', '3-5-2']
+        && isStringListBounded(data.playerIds, 15)
+        && isOptionalStringBounded(data, 'captainId', 64)
+        && isOptionalStringBounded(data, 'leagueCode', 24)
+        && data.totalPoints is int && data.totalPoints >= 0 && data.totalPoints <= 100000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrediction(data) {
+      return data.keys().hasAll(['userId', 'matchId', 'matchTitle', 'homeScore', 'awayScore', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'matchId', 'matchTitle', 'homeScore', 'awayScore', 'createdAt'])
+        && isValidId(data.userId)
+        && isValidId(data.matchId)
+        && isStringBounded(data.matchTitle, 2, 120)
+        && data.homeScore is int && data.homeScore >= 0 && data.homeScore <= 30
+        && data.awayScore is int && data.awayScore >= 0 && data.awayScore <= 30
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSavedArticle(data) {
+      return data.keys().hasAll(['userId', 'articleId', 'title', 'url', 'savedAt'])
+        && data.keys().hasOnly(['userId', 'articleId', 'title', 'url', 'source', 'imageUrl', 'publishedAt', 'savedAt'])
+        && isValidId(data.userId)
+        && isStringBounded(data.articleId, 1, 128)
+        && isStringBounded(data.title, 1, 240)
+        && isStringBounded(data.url, 1, 512)
+        && isOptionalStringBounded(data, 'source', 80)
+        && isOptionalStringBounded(data, 'imageUrl', 512)
+        && isOptionalStringBounded(data, 'publishedAt', 64)
+        && data.savedAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'type', 'title', 'body', 'read', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'type', 'title', 'body', 'read', 'createdAt'])
+        && isValidId(data.userId)
+        && data.type in ['goal', 'kickoff', 'final', 'red_card', 'news', 'friend', 'chat', 'quiz', 'streak', 'challenge', 'trade']
+        && isStringBounded(data.title, 1, 120)
+        && isStringBounded(data.body, 1, 300)
+        && data.read is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['reporterId', 'targetType', 'targetId', 'reason', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['reporterId', 'targetType', 'targetId', 'reason', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.reporterId)
+        && data.targetType in ['user', 'message', 'poll']
+        && isStringBounded(data.targetId, 1, 128)
+        && isStringBounded(data.reason, 3, 500)
+        && data.status in ['open', 'resolved', 'dismissed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomNews(data) {
+      return data.keys().hasAll(['title', 'summary', 'category', 'authorId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'summary', 'category', 'imageUrl', 'authorId', 'createdAt', 'updatedAt'])
+        && isStringBounded(data.title, 3, 180)
+        && isStringBounded(data.summary, 10, 2000)
+        && data.category in ['Breaking', 'Transfers', 'Clubs', 'International', 'Lebanese', 'Gaming']
+        && isOptionalStringBounded(data, 'imageUrl', 512)
+        && isValidId(data.authorId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isValidId(uid) && isAdmin();
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if isSignedIn();
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPublic(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isValidUserPublic(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            isOwner(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'username', 'displayName', 'avatarUrl', 'bio',
+              'favoriteTeams', 'favoriteNationalTeams', 'favoriteLeagues', 'favoritePlayers',
+              'favoriteCountry', 'favoriteCity', 'favoritePosition',
+              'points', 'achievements', 'online', 'lastSeen', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isValidId(userId) && isValidId(docId)
+          && isOwner(userId)
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && isValidId(docId)
+          && isValidUserPrivate(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && (isOwner(userId) || isAdmin());
+        allow delete: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    match /friendRequests/{requestId} {
+      allow get: if isValidId(requestId) && isSignedIn()
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(requestId)
+        && isVerifiedUser()
+        && isValidFriendRequest(incoming())
+        && incoming().fromUid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(requestId)
+        && isVerifiedUser()
+        && isValidFriendRequest(incoming())
+        && incoming().fromUid == existing().fromUid
+        && incoming().toUid == existing().toUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && existing().status == 'pending'
+        && (
+          isAdmin() || (
+            existing().toUid == request.auth.uid
+            && incoming().status in ['accepted', 'rejected']
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(requestId) && isSignedIn()
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid || isAdmin());
+    }
+
+    match /streaks/{streakId} {
+      allow get: if isValidId(streakId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(streakId)
+        && isVerifiedUser()
+        && isValidFriendStreak(incoming())
+        && request.auth.uid in incoming().participantIds
+        && incoming().lastSenderId == request.auth.uid
+        && incoming().count <= 1
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(streakId)
+        && isVerifiedUser()
+        && isValidFriendStreak(incoming())
+        && incoming().userA == existing().userA
+        && incoming().userB == existing().userB
+        && incoming().participantIds == existing().participantIds
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            request.auth.uid in existing().participantIds
+            && incoming().lastSenderId == request.auth.uid
+            && incoming().count <= existing().count + 1
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'count', 'bestCount', 'lastSenderId', 'lastActiveDate', 'todaySenders', 'badges', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isValidId(streakId) && isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow get: if isValidId(chatId) && (
+        existing().type == 'channel' ||
+        (isSignedIn() && (request.auth.uid in existing().participantIds || isAdmin()))
+      );
+      allow list: if isSignedIn() && (
+        resource.data.type == 'channel' ||
+        request.auth.uid in resource.data.participantIds ||
+        isAdmin()
+      );
+      allow create: if isValidId(chatId)
+        && isVerifiedUser()
+        && isValidChatRoom(incoming())
+        && incoming().createdBy == request.auth.uid
+        && request.auth.uid in incoming().participantIds
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(chatId)
+        && isVerifiedUser()
+        && isValidChatRoom(incoming())
+        && incoming().createdBy == existing().createdBy
+        && incoming().type == existing().type
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            (existing().type == 'channel' || request.auth.uid in existing().participantIds)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'lastMessage', 'updatedAt', 'participantIds', 'name',
+              'avatarUrl', 'backgroundTheme', 'pinnedMessageIds', 'readBy'
+            ])
+          )
+        );
+      allow delete: if isValidId(chatId) && isAdmin();
+
+      match /messages/{messageId} {
+        allow get: if isValidId(chatId) && isValidId(messageId) && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
+          (isSignedIn() && (
+            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds ||
+            isAdmin()
+          ))
+        );
+        allow list: if isSignedIn() && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds ||
+          isAdmin()
+        );
+        allow create: if isValidId(chatId) && isValidId(messageId)
+          && isVerifiedUser()
+          && isValidChatMessage(incoming())
+          && incoming().senderId == request.auth.uid
+          && incoming().createdAt == request.time
+          && (
+            get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
+            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
+          );
+        allow update: if isValidId(chatId) && isValidId(messageId)
+          && isVerifiedUser()
+          && isValidChatMessage(incoming())
+          && incoming().senderId == existing().senderId
+          && incoming().createdAt == existing().createdAt
+          && (
+            isAdmin() || (
+              (
+                get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
+                request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
+              )
+              && (
+                incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'readBy', 'pinned']) ||
+                (
+                  existing().senderId == request.auth.uid
+                  && incoming().diff(existing()).affectedKeys().hasOnly(['text', 'deleted', 'editedAt'])
+                )
+              )
+            )
+          );
+        allow delete: if isValidId(chatId) && isValidId(messageId)
+          && isSignedIn()
+          && (existing().senderId == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /cardCollections/{userId} {
+      allow get: if isValidId(userId) && isSignedIn();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isOwner(userId)
+        && isValidCardCollection(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidCardCollection(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            isOwner(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'cardCounts', 'dreamFormation', 'dreamSlots', 'packsOpened', 'achievements', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    match /cardTrades/{tradeId} {
+      allow get: if isValidId(tradeId) && isSignedIn()
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(tradeId)
+        && isVerifiedUser()
+        && isValidCardTrade(incoming())
+        && incoming().fromUid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().fromSettled == false
+        && incoming().toSettled == false
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(tradeId)
+        && isVerifiedUser()
+        && isValidCardTrade(incoming())
+        && incoming().fromUid == existing().fromUid
+        && incoming().toUid == existing().toUid
+        && incoming().offeredCardId == existing().offeredCardId
+        && incoming().requestedCardId == existing().requestedCardId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().toUid == request.auth.uid
+            && existing().status == 'pending'
+            && incoming().status in ['accepted', 'rejected']
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'toSettled', 'updatedAt'])
+          ) ||
+          (
+            existing().fromUid == request.auth.uid
+            && existing().status == 'pending'
+            && incoming().status == 'cancelled'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          ) ||
+          (
+            existing().fromUid == request.auth.uid
+            && existing().status == 'accepted'
+            && existing().fromSettled == false
+            && incoming().fromSettled == true
+            && incoming().diff(existing()).affectedKeys().hasOnly(['fromSettled', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(tradeId) && isAdmin();
+    }
+
+    match /gameChallenges/{challengeId} {
+      allow get: if isValidId(challengeId) && isSignedIn()
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
+      allow create: if isValidId(challengeId)
+        && isVerifiedUser()
+        && isValidGameChallenge(incoming())
+        && incoming().fromUid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(challengeId)
+        && isVerifiedUser()
+        && isValidGameChallenge(incoming())
+        && incoming().fromUid == existing().fromUid
+        && incoming().toUid == existing().toUid
+        && incoming().gameType == existing().gameType
+        && incoming().seed == existing().seed
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'fromScore', 'toScore', 'winnerUid', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(challengeId) && isSignedIn()
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid || isAdmin());
+    }
+
+    match /polls/{pollId} {
+      allow get: if isValidId(pollId);
+      allow list: if true;
+      allow create: if isValidId(pollId)
+        && isVerifiedUser()
+        && isValidPoll(incoming())
+        && incoming().createdBy == request.auth.uid
+        && incoming().totalVotes == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(pollId)
+        && isVerifiedUser()
+        && isValidPoll(incoming())
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            request.time < existing().closesAt
+            && incoming().diff(existing()).affectedKeys().hasOnly(['counts', 'totalVotes', 'updatedAt'])
+            && incoming().totalVotes == existing().totalVotes + 1
+            && existsAfter(/databases/$(database)/documents/polls/$(pollId)/votes/$(request.auth.uid))
+          )
+        );
+      allow delete: if isValidId(pollId) && isAdmin();
+
+      match /votes/{voterId} {
+        allow get: if isValidId(pollId) && isValidId(voterId) && (isOwner(voterId) || isAdmin());
+        allow list: if isAdmin();
+        allow create: if isValidId(pollId) && isValidId(voterId)
+          && isVerifiedUser()
+          && isOwner(voterId)
+          && isValidPollVote(incoming(), voterId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/polls/$(pollId));
+        allow update, delete: if false;
+      }
+    }
+
+    match /fantasyTeams/{userId} {
+      allow get: if isValidId(userId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isOwner(userId)
+        && isValidFantasyTeam(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidFantasyTeam(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            isOwner(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['teamName', 'formation', 'playerIds', 'captainId', 'leagueCode', 'totalPoints', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    match /predictions/{predictionId} {
+      allow get: if isValidId(predictionId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(predictionId)
+        && isVerifiedUser()
+        && isValidPrediction(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(predictionId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    match /savedArticles/{articleDocId} {
+      allow get: if isValidId(articleDocId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(articleDocId)
+        && isVerifiedUser()
+        && isValidSavedArticle(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().savedAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(articleDocId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    match /notifications/{notifId} {
+      allow get: if isValidId(notifId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(notifId)
+        && isVerifiedUser()
+        && isValidNotification(incoming())
+        && (incoming().userId == request.auth.uid || isAdmin())
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(notifId)
+        && isVerifiedUser()
+        && isValidNotification(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && (isOwner(existing().userId) || isAdmin())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isValidId(notifId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
+      allow create: if isValidId(reportId)
+        && isVerifiedUser()
+        && isValidReport(incoming())
+        && incoming().reporterId == request.auth.uid
+        && incoming().status == 'open'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(reportId)
+        && isAdmin()
+        && isValidReport(incoming())
+        && incoming().reporterId == existing().reporterId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isValidId(reportId) && isAdmin();
+    }
+
+    match /customNews/{newsId} {
+      allow get: if isValidId(newsId);
+      allow list: if true;
+      allow create: if isValidId(newsId)
+        && isAdmin()
+        && isValidCustomNews(incoming())
+        && incoming().authorId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(newsId)
+        && isAdmin()
+        && isValidCustomNews(incoming())
+        && incoming().authorId == existing().authorId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'category', 'imageUrl', 'updatedAt']);
+      allow delete: if isValidId(newsId) && isAdmin();
+    }
+  }
+}

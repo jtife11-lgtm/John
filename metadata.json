@@ -1,0 +1,6 @@
+{
+  "name": "STR SCORES",
+  "description": "Ultimate Football & Gaming Platform — Live Scores, AI Match Center, Football & Gaming News, Mini-Games, Fantasy, STR VOTE & Real-Time Community.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

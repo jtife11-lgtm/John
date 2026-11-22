@@ -1,0 +1,388 @@
+{
+  "entities": {
+    "UserPublic": {
+      "title": "UserPublic",
+      "description": "Public supporter profile and football preferences without PII",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 2, "maxLength": 32, "pattern": "^[a-zA-Z0-9_]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "avatarUrl": { "type": "string", "maxLength": 512 },
+        "bio": { "type": "string", "maxLength": 280 },
+        "favoriteTeams": { "type": "array", "description": "Max 20 team IDs" },
+        "favoriteNationalTeams": { "type": "array", "description": "Max 10 national teams" },
+        "favoriteLeagues": { "type": "array", "description": "Max 15 league IDs" },
+        "favoritePlayers": { "type": "array", "description": "Max 20 player names" },
+        "favoriteCountry": { "type": "string", "maxLength": 64 },
+        "favoriteCity": { "type": "string", "maxLength": 64 },
+        "favoritePosition": { "type": "string", "maxLength": 32 },
+        "points": { "type": "integer" },
+        "achievements": { "type": "array", "description": "Max 30 achievement IDs" },
+        "online": { "type": "boolean" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "displayName", "points", "createdAt", "updatedAt"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Private user PII, notification settings, and blocked user list",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "language": { "type": "string", "enum": ["en", "ar"] },
+        "theme": { "type": "string", "enum": ["dark", "light"] },
+        "notifGoals": { "type": "boolean" },
+        "notifKickoff": { "type": "boolean" },
+        "notifFinal": { "type": "boolean" },
+        "notifRedCards": { "type": "boolean" },
+        "notifNews": { "type": "boolean" },
+        "notifFriends": { "type": "boolean" },
+        "notifGroups": { "type": "boolean" },
+        "notifQuiz": { "type": "boolean" },
+        "blockedUids": { "type": "array", "description": "Max 100 blocked UIDs" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Social friend request between two verified users",
+      "type": "object",
+      "properties": {
+        "fromUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "toUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "toName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromUid", "toUid", "fromName", "toName", "status", "createdAt", "updatedAt"]
+    },
+    "FriendStreak": {
+      "title": "FriendStreak",
+      "description": "Daily friendship streak tracked between two friends on genuine reciprocal messages",
+      "type": "object",
+      "properties": {
+        "userA": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userB": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nameA": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "nameB": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "participantIds": { "type": "array", "description": "Exactly 2 participant UIDs" },
+        "count": { "type": "integer" },
+        "bestCount": { "type": "integer" },
+        "lastSenderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "lastActiveDate": { "type": "string", "maxLength": 16 },
+        "todaySenders": { "type": "array", "description": "Senders who messaged today (max 2)" },
+        "badges": { "type": "array", "description": "Milestone badges earned (max 15)" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userA", "userB", "nameA", "nameB", "participantIds", "count", "bestCount", "lastSenderId", "lastActiveDate", "createdAt", "updatedAt"]
+    },
+    "ChatRoom": {
+      "title": "ChatRoom",
+      "description": "Direct, group, or community club discussion room",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["direct", "group", "channel"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "clubTag": { "type": "string", "maxLength": 40 },
+        "avatarUrl": { "type": "string", "maxLength": 200000 },
+        "backgroundTheme": { "type": "string", "maxLength": 40 },
+        "pinnedMessageIds": { "type": "array", "description": "Max 10 pinned message IDs" },
+        "readBy": { "type": "object", "description": "Map of uid to ISO timestamp" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "participantIds": { "type": "array", "description": "Max 50 participants" },
+        "lastMessage": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "name", "createdBy", "participantIds", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Message inside a chat room or club channel",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "senderName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "text": { "type": "string", "maxLength": 2000 },
+        "mediaType": { "type": "string", "enum": ["text", "image", "video", "voice", "card", "sticker", "match", "news", "invite"] },
+        "mediaData": { "type": "string", "maxLength": 200000 },
+        "metadata": { "type": "string", "maxLength": 4000 },
+        "replyToId": { "type": "string", "maxLength": 128 },
+        "reactions": { "type": "object" },
+        "readBy": { "type": "array", "description": "Max 50 reader UIDs" },
+        "pinned": { "type": "boolean" },
+        "deleted": { "type": "boolean" },
+        "editedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "text", "mediaType", "createdAt"]
+    },
+    "CardCollection": {
+      "title": "CardCollection",
+      "description": "STR Player Cards owned inventory and dream squad formation",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "cardCounts": { "type": "object", "description": "Map of cardId to count" },
+        "dreamFormation": { "type": "string", "enum": ["4-3-3", "4-4-2", "3-5-2", "4-2-3-1"] },
+        "dreamSlots": { "type": "array", "description": "Up to 11 card IDs" },
+        "packsOpened": { "type": "integer" },
+        "achievements": { "type": "array", "description": "Max 30 collection badges" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "cardCounts", "dreamFormation", "dreamSlots", "packsOpened", "createdAt", "updatedAt"]
+    },
+    "CardTrade": {
+      "title": "CardTrade",
+      "description": "Fair server-checked player card trade offer between friends",
+      "type": "object",
+      "properties": {
+        "fromUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "toUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "toName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "offeredCardId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "requestedCardId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "fairnessNote": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "cancelled"] },
+        "fromSettled": { "type": "boolean" },
+        "toSettled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromUid", "toUid", "fromName", "toName", "offeredCardId", "requestedCardId", "status", "fromSettled", "toSettled", "createdAt", "updatedAt"]
+    },
+    "GameChallenge": {
+      "title": "GameChallenge",
+      "description": "Head-to-head multiplayer challenge between friends in STR Mini Games",
+      "type": "object",
+      "properties": {
+        "fromUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "toUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "toName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "gameType": { "type": "string", "enum": ["penalty", "quiz", "higher_lower", "card_battle", "guess_player", "guess_club"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "completed", "declined"] },
+        "fromScore": { "type": "integer" },
+        "toScore": { "type": "integer" },
+        "winnerUid": { "type": "string", "maxLength": 128 },
+        "seed": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromUid", "toUid", "fromName", "toName", "gameType", "status", "fromScore", "toScore", "seed", "createdAt", "updatedAt"]
+    },
+    "Poll": {
+      "title": "Poll",
+      "description": "STR VOTE fan poll or community vote",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string", "enum": ["potm", "poty", "gotw", "best_team", "young_player", "match_winner", "community"] },
+        "title": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "options": { "type": "array", "description": "2 to 10 options" },
+        "counts": { "type": "array", "description": "Vote counts matching options length" },
+        "totalVotes": { "type": "integer" },
+        "closesAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["category", "title", "options", "counts", "totalVotes", "closesAt", "createdBy", "createdAt", "updatedAt"]
+    },
+    "PollVote": {
+      "title": "PollVote",
+      "description": "Single vote record keyed by voter UID to prevent duplicates",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "optionIndex": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "optionIndex", "createdAt"]
+    },
+    "FantasyTeam": {
+      "title": "FantasyTeam",
+      "description": "User fantasy football squad and private league membership",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "teamName": { "type": "string", "minLength": 2, "maxLength": 50 },
+        "formation": { "type": "string", "enum": ["4-3-3", "4-4-2", "3-5-2"] },
+        "playerIds": { "type": "array", "description": "Up to 15 selected player IDs" },
+        "captainId": { "type": "string", "maxLength": 64 },
+        "leagueCode": { "type": "string", "maxLength": 24 },
+        "totalPoints": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "teamName", "formation", "playerIds", "totalPoints", "createdAt", "updatedAt"]
+    },
+    "Prediction": {
+      "title": "Prediction",
+      "description": "Fun match prediction entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "matchId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "matchTitle": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "homeScore": { "type": "integer" },
+        "awayScore": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "matchId", "matchTitle", "homeScore", "awayScore", "createdAt"]
+    },
+    "SavedArticle": {
+      "title": "SavedArticle",
+      "description": "Bookmarked football or gaming news article",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "articleId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "url": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "source": { "type": "string", "maxLength": 80 },
+        "imageUrl": { "type": "string", "maxLength": 512 },
+        "publishedAt": { "type": "string", "maxLength": 64 },
+        "savedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "articleId", "title", "url", "savedAt"]
+    },
+    "UserNotification": {
+      "title": "UserNotification",
+      "description": "Personalized alert for goals, matches, friend requests, streaks, or quizzes",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["goal", "kickoff", "final", "red_card", "news", "friend", "chat", "quiz", "streak", "challenge", "trade"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "body": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "body", "read", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "User or content moderation report reviewed by admins",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "targetType": { "type": "string", "enum": ["user", "message", "poll"] },
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reason": { "type": "string", "minLength": 3, "maxLength": 500 },
+        "status": { "type": "string", "enum": ["open", "resolved", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterId", "targetType", "targetId", "reason", "status", "createdAt", "updatedAt"]
+    },
+    "CustomNews": {
+      "title": "CustomNews",
+      "description": "Admin-published STR SCORES editorial news item",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 3, "maxLength": 180 },
+        "summary": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "category": { "type": "string", "enum": ["Breaking", "Transfers", "Clubs", "International", "Lebanese", "Gaming"] },
+        "imageUrl": { "type": "string", "maxLength": 512 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "summary", "category", "authorId", "createdAt", "updatedAt"]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Admin role assignment marker",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "grantedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Admin role documents"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublic" },
+      "description": "Public user supporter profile and football preferences"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Private PII and notification preferences"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend connection requests"
+    },
+    "/streaks/{streakId}": {
+      "schema": { "$ref": "#/entities/FriendStreak" },
+      "description": "Daily friendship streaks"
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/ChatRoom" },
+      "description": "Chat rooms and club channels"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Messages within a chat room"
+    },
+    "/cardCollections/{userId}": {
+      "schema": { "$ref": "#/entities/CardCollection" },
+      "description": "STR Player Cards owned collection and Dream XI"
+    },
+    "/cardTrades/{tradeId}": {
+      "schema": { "$ref": "#/entities/CardTrade" },
+      "description": "Peer-to-peer STR Player Card trades"
+    },
+    "/gameChallenges/{challengeId}": {
+      "schema": { "$ref": "#/entities/GameChallenge" },
+      "description": "Multiplayer friend challenges"
+    },
+    "/polls/{pollId}": {
+      "schema": { "$ref": "#/entities/Poll" },
+      "description": "STR VOTE fan polls"
+    },
+    "/polls/{pollId}/votes/{voterId}": {
+      "schema": { "$ref": "#/entities/PollVote" },
+      "description": "Single vote per verified user"
+    },
+    "/fantasyTeams/{userId}": {
+      "schema": { "$ref": "#/entities/FantasyTeam" },
+      "description": "User fantasy squads"
+    },
+    "/predictions/{predictionId}": {
+      "schema": { "$ref": "#/entities/Prediction" },
+      "description": "User match predictions"
+    },
+    "/savedArticles/{articleDocId}": {
+      "schema": { "$ref": "#/entities/SavedArticle" },
+      "description": "Saved news bookmarks"
+    },
+    "/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/UserNotification" },
+      "description": "User notifications"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Moderation reports"
+    },
+    "/customNews/{newsId}": {
+      "schema": { "$ref": "#/entities/CustomNews" },
+      "description": "Admin editorial announcements"
+    }
+  }
+}
