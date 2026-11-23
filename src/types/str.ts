@@ -53,6 +53,7 @@ export interface LineupPlayer {
   jersey: string;
   position: string;
   starter: boolean;
+  formationPlace?: number;
   photo?: string;
   statsSummary?: string;
 }
@@ -60,6 +61,7 @@ export interface LineupPlayer {
 export interface TeamLineup {
   teamId: string;
   teamName: string;
+  teamLogo?: string;
   formation: string;
   starters: LineupPlayer[];
   subs: LineupPlayer[];

@@ -29,8 +29,8 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
       }
 
       return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#060B16] text-slate-900 dark:text-slate-100 flex items-center justify-center p-6">
-          <div className="max-w-lg w-full rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-8 shadow-xl space-y-5">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#07090F] text-slate-900 dark:text-slate-100 flex items-center justify-center p-6">
+          <div className="max-w-lg w-full rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-8 shadow-xl space-y-5">
             <div className="flex items-center gap-3 text-rose-500">
               <AlertTriangle className="w-7 h-7 shrink-0" />
               <h1 className="font-display text-2xl font-bold">STR SCORES encountered an issue</h1>
@@ -40,7 +40,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-semibold text-sm hover:brightness-105 transition"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#E11D48] text-white font-semibold text-sm hover:brightness-105 transition"
             >
               <RotateCcw className="w-4 h-4" />
               Reload STR SCORES

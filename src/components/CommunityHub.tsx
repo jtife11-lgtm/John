@@ -38,6 +38,8 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
+  getDocFromServer,
   limit,
   onSnapshot,
   orderBy,
@@ -59,21 +61,18 @@ import { PlayerCardVisual } from './PlayerCardVisual';
 import type { MatchItem, NewsArticle } from '../types/str';
 
 const CHAT_BACKGROUNDS: Record<string, { label: string; className: string }> = {
-  classic: { label: 'Classic Navy', className: 'bg-white dark:bg-[#0B1324]' },
-  pitch: {
-    label: 'Emerald Pitch',
-    className:
-      'bg-gradient-to-b from-emerald-950/30 via-[#071521] to-[#060B16]',
+  classic: { label: 'Obsidian Dark', className: 'bg-white dark:bg-[#0F1219]' },
+  crimson: {
+    label: 'Crimson Matchnight',
+    className: 'bg-gradient-to-b from-[#2A0812]/80 via-[#0F1219] to-[#07090F]',
   },
-  stadium: {
-    label: 'Stadium Lights',
-    className:
-      'bg-gradient-to-br from-slate-900 via-[#0B1324] to-emerald-950/40',
+  pitch: {
+    label: 'Floodlit Pitch',
+    className: 'bg-gradient-to-b from-slate-900 via-[#0C121D] to-[#07090F]',
   },
   derby: {
-    label: 'Derby Night',
-    className:
-      'bg-gradient-to-b from-indigo-950/40 via-[#0B1324] to-[#060B16]',
+    label: 'Derby Arena',
+    className: 'bg-gradient-to-br from-[#3B0A18]/60 via-[#0F1219] to-[#07090F]',
   },
 };
 
@@ -103,12 +102,16 @@ export function CommunityHub() {
     setSelectedMatchForDetail,
     setShowAuthModal,
     setAuthModalMode,
+    notifications,
+    markNotificationRead,
   } = useApp();
 
   const [rooms, setRooms] = useState<any[]>([]);
+  const [channelsChecked, setChannelsChecked] = useState(false);
   const [activeRoom, setActiveRoom] = useState<any | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [msgText, setMsgText] = useState('');
+  const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<any | null>(null);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editMsgText, setEditMsgText] = useState('');
@@ -131,6 +134,8 @@ export function CommunityHub() {
   const [recording, setRecording] = useState(false);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const threadBottomRef = useRef<HTMLDivElement | null>(null);
+  const seededOnceRef = useRef(false);
 
   // Friends, Users & Streaks
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -167,7 +172,17 @@ export function CommunityHub() {
 
   const blockedUids = userPrivate?.blockedUids || [];
 
-  // Derived message filters (placed above any conditional return to obey Rules of Hooks)
+  const safeWsSend = (payload: unknown) => {
+    try {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(payload));
+      }
+    } catch {
+      // Ignore socket send errors when reconnecting
+    }
+  };
+
+  // Derived message filters
   const pinnedMessages = messages.filter((m) => m.pinned && !m.deleted);
   const visibleMessages = useMemo(() => {
     return messages.filter((m) => {
@@ -183,25 +198,61 @@ export function CommunityHub() {
     });
   }, [messages, blockedUids, msgSearch]);
 
+  // Seed default club channels idempotently (check before write)
+  const ensureStarterChannels = async () => {
+    if (!user) return;
+    const channels = [
+      { id: 'channel_global', name: 'Global Football Lounge', clubTag: 'World Football' },
+      { id: 'channel_pl', name: 'Premier League Fans', clubTag: 'Premier League' },
+      { id: 'channel_ucl', name: 'Champions League Nights', clubTag: 'UEFA UCL' },
+      { id: 'channel_lebanon', name: 'Lebanese Football Room', clubTag: 'Lebanese League' },
+    ];
+    for (const ch of channels) {
+      const ref = doc(db, 'chats', ch.id);
+      const existing = await getDoc(ref).catch(() => null);
+      if (!existing?.exists()) {
+        await setDoc(ref, {
+          type: 'channel',
+          name: ch.name,
+          clubTag: ch.clubTag,
+          backgroundTheme: 'classic',
+          createdBy: user.uid,
+          participantIds: [user.uid],
+          lastMessage: 'Welcome to the matchday lounge!',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }).catch(() => {});
+      }
+    }
+  };
+
   // Real-time listeners for Chats, Users, FriendRequests, and Streaks
   useEffect(() => {
     if (!user) return;
     const unsubChannels = onSnapshot(
       query(collection(db, 'chats'), where('type', '==', 'channel')),
       (snap) => {
-        const ch = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const ch = snap.docs
+          .filter((d) => !d.metadata.hasPendingWrites)
+          .map((d) => ({ id: d.id, ...d.data() }));
         setRooms((prev) => {
           const nonCh = prev.filter((r) => r.type !== 'channel');
           return [...ch, ...nonCh];
         });
+        setChannelsChecked(true);
       },
-      () => {}
+      (err) => {
+        setChannelsChecked(true);
+        handleFirestoreError(err, OperationType.LIST, 'chats');
+      }
     );
 
     const unsubMyRooms = onSnapshot(
       query(collection(db, 'chats'), where('participantIds', 'array-contains', user.uid)),
       (snap) => {
-        const mine = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const mine = snap.docs
+          .filter((d) => !d.metadata.hasPendingWrites)
+          .map((d) => ({ id: d.id, ...d.data() }));
         setRooms((prev) => {
           const onlyCh = prev.filter((r) => r.type === 'channel');
           const merged = [...onlyCh];
@@ -217,7 +268,7 @@ export function CommunityHub() {
     );
 
     const unsubUsers = onSnapshot(
-      query(collection(db, 'users'), limit(60)),
+      query(collection(db, 'users'), limit(80)),
       (snap) => setAllUsers(snap.docs.map((d) => d.data()).filter((u) => u.uid !== user.uid)),
       () => {}
     );
@@ -256,7 +307,17 @@ export function CommunityHub() {
     };
   }, [user]);
 
-  // Keep activeRoom fresh when room metadata updates (background, pin, lastMessage)
+  // Auto-seed starter rooms once if Firestore channels collection is empty
+  useEffect(() => {
+    if (!user || !channelsChecked || seededOnceRef.current) return;
+    const hasChannels = rooms.some((r) => r.type === 'channel');
+    if (!hasChannels) {
+      seededOnceRef.current = true;
+      ensureStarterChannels();
+    }
+  }, [user, channelsChecked, rooms]);
+
+  // Keep activeRoom synced with updates
   useEffect(() => {
     if (!activeRoom && rooms.length > 0) {
       setActiveRoom(rooms[0]);
@@ -266,42 +327,77 @@ export function CommunityHub() {
     }
   }, [rooms]);
 
-  // Load messages + mark read receipt
+  // Load messages + mark read receipts + clear unread chat notifications for active room
   useEffect(() => {
     if (!user || !activeRoom) {
       setMessages([]);
       return;
     }
 
-    wsRef.current?.send(JSON.stringify({ type: 'join_room', roomId: activeRoom.id }));
-    wsRef.current?.send(JSON.stringify({ type: 'read_receipt', roomId: activeRoom.id }));
+    safeWsSend({ type: 'join_room', roomId: activeRoom.id });
+    safeWsSend({ type: 'read_receipt', roomId: activeRoom.id });
 
-    const unsub = onSnapshot(
-      query(
-        collection(db, 'chats', activeRoom.id, 'messages'),
-        orderBy('createdAt', 'asc'),
-        limit(100)
-      ),
-      (snap) => {
-        const list: any[] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setMessages(list);
-        // Mark latest foreign message read in Firestore if verified
-        if (user.emailVerified && list.length > 0) {
-          const lastForeign = [...list]
-            .reverse()
-            .find((m: any) => m.senderId !== user.uid && !(m.readBy || []).includes(user.uid));
-          if (lastForeign) {
-            const nextRead = Array.from(new Set([...(lastForeign.readBy || []), user.uid])).slice(0, 50);
-            updateDoc(doc(db, 'chats', activeRoom.id, 'messages', lastForeign.id), {
-              readBy: nextRead,
-            }).catch(() => {});
+    notifications
+      .filter((n: any) => !n.read && n.roomId === activeRoom.id)
+      .forEach((n) => markNotificationRead(n.id));
+
+    let cancelled = false;
+    let unsub: (() => void) | null = null;
+
+    const attachMessagesListener = async () => {
+      // Ensure the parent chat document exists on Firestore server before querying subcollection
+      let ready = false;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (cancelled) return;
+        try {
+          const parentSnap = await getDocFromServer(doc(db, 'chats', activeRoom.id));
+          if (parentSnap.exists()) {
+            ready = true;
+            break;
           }
+        } catch {
+          // Wait briefly if newly created doc is still propagating
         }
-      },
-      (err) => handleFirestoreError(err, OperationType.LIST, `chats/${activeRoom.id}/messages`)
-    );
+        await new Promise((r) => setTimeout(r, 300));
+      }
 
-    return () => unsub();
+      if (cancelled || !ready) return;
+
+      unsub = onSnapshot(
+        query(
+          collection(db, 'chats', activeRoom.id, 'messages'),
+          orderBy('createdAt', 'asc'),
+          limit(120)
+        ),
+        (snap) => {
+          const list: any[] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setMessages(list);
+
+          if (list.length > 0) {
+            const lastForeign = [...list]
+              .reverse()
+              .find((m: any) => m.senderId !== user.uid && !(m.readBy || []).includes(user.uid));
+            if (lastForeign) {
+              const nextRead = Array.from(new Set([...(lastForeign.readBy || []), user.uid])).slice(0, 50);
+              updateDoc(doc(db, 'chats', activeRoom.id, 'messages', lastForeign.id), {
+                readBy: nextRead,
+              }).catch(() => {});
+            }
+          }
+          setTimeout(() => threadBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+        },
+        (err) => {
+          console.error('Messages listener error:', err);
+        }
+      );
+    };
+
+    attachMessagesListener();
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, [user, activeRoom?.id]);
 
   // WebSocket listener for typing, read receipts, game invites & WebRTC calls
@@ -320,7 +416,7 @@ export function CommunityHub() {
           });
         }
         if (data.type === 'game_invite') {
-          pushToast(`${data.fromName} challenged you to ${data.gameType}! Check Games Hub or Friends.`, 'info');
+          pushToast(`${data.fromName} challenged you to ${data.gameType}! Check Games Hub.`, 'info');
         }
         if (data.type === 'streak_milestone') {
           triggerGoalBlast();
@@ -341,7 +437,7 @@ export function CommunityHub() {
           pushToast('Call ended', 'info');
         }
       } catch {
-        // Ignore
+        // Ignore malformed frame
       }
     };
     ws.addEventListener('message', handler);
@@ -355,7 +451,7 @@ export function CommunityHub() {
 
   // Authentic Fair Streak Progression (Only on genuine DM message exchange!)
   const recordAuthenticStreak = async (room: any) => {
-    if (!user || !user.emailVerified || room.type !== 'direct') return;
+    if (!user || room.type !== 'direct') return;
     const peerUid = (room.participantIds || []).find((id: string) => id !== user.uid);
     if (!peerUid) return;
 
@@ -394,7 +490,6 @@ export function CommunityHub() {
     const prevBest = Number(existing.bestCount || 0);
     const prevBadges: string[] = Array.isArray(existing.badges) ? existing.badges : [];
 
-    // Already both messaged today -> no duplicate bump
     if (prevDate === today && prevTodaySenders.includes(user.uid)) {
       return;
     }
@@ -404,15 +499,12 @@ export function CommunityHub() {
 
     if (prevDate === today) {
       nextTodaySenders = Array.from(new Set([...prevTodaySenders, user.uid])).slice(0, 2);
-      // Both friends exchanged today -> genuine reciprocal exchange!
       if (nextTodaySenders.length === 2) {
         nextCount = currentCount + 1;
       }
     } else if (prevDate === yesterday && prevTodaySenders.length === 2) {
-      // Yesterday was complete; starting today's half
       nextTodaySenders = [user.uid];
     } else {
-      // Gap day broke the active streak -> start fresh at 0 until partner replies today
       nextCount = 0;
       nextTodaySenders = [user.uid];
     }
@@ -434,14 +526,14 @@ export function CommunityHub() {
     if (milestone) {
       triggerGoalBlast();
       pushToast(`🔥 STR Streak Milestone reached: ${nextCount} days (${milestone})!`, 'success');
-      wsRef.current?.send(
-        JSON.stringify({ type: 'streak_milestone', targetUid: peerUid, count: nextCount })
-      );
+      safeWsSend({ type: 'streak_milestone', targetUid: peerUid, count: nextCount });
       await addDoc(collection(db, 'notifications'), {
-        userId: user.uid,
+        userId: peerUid,
+        senderUid: user.uid,
+        roomId: room.id,
         type: 'streak',
         title: `🔥 ${nextCount}-Day Streak Milestone!`,
-        body: `You and ${peerName} unlocked ${milestone}.`,
+        body: `You and ${myName} unlocked ${milestone}.`,
         read: false,
         createdAt: serverTimestamp(),
       }).catch(() => {});
@@ -449,30 +541,9 @@ export function CommunityHub() {
   };
 
   const seedClubChannels = async () => {
-    if (!user || !user.emailVerified) {
-      pushToast('Verify your email first to initialize community channels.', 'info');
-      return;
-    }
-    const channels = [
-      { id: 'channel_global', name: 'Global Football Lounge', clubTag: 'World Football' },
-      { id: 'channel_pl', name: 'Premier League Fans', clubTag: 'Premier League' },
-      { id: 'channel_ucl', name: 'Champions League Nights', clubTag: 'UEFA UCL' },
-      { id: 'channel_lebanon', name: 'Lebanese Football Room', clubTag: 'Lebanese League' },
-    ];
-    for (const ch of channels) {
-      await setDoc(doc(db, 'chats', ch.id), {
-        type: 'channel',
-        name: ch.name,
-        clubTag: ch.clubTag,
-        backgroundTheme: 'classic',
-        createdBy: user.uid,
-        participantIds: [user.uid],
-        lastMessage: 'Welcome to the room!',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-    pushToast('Club community channels initialized!', 'success');
+    if (!user) return;
+    await ensureStarterChannels();
+    pushToast('Club channels ready!', 'success');
   };
 
   const sendMessage = async (
@@ -485,20 +556,17 @@ export function CommunityHub() {
     }
   ) => {
     e?.preventDefault();
-    if (!user || !activeRoom) return;
-    if (!user.emailVerified) {
-      pushToast('Please verify your email before sending messages.', 'info');
-      return;
-    }
+    if (!user || !activeRoom || sending) return;
 
     const textToSend = override ? override.text : msgText.trim();
     const mediaType = override ? override.mediaType : pendingMedia ? pendingMedia.type : 'text';
 
     if (!textToSend && !pendingMedia && !override) return;
 
+    const senderName = (userProfile?.displayName || user.displayName || 'Supporter').slice(0, 64);
     const payload: any = {
       senderId: user.uid,
-      senderName: (userProfile?.displayName || user.displayName || 'Supporter').slice(0, 64),
+      senderName,
       text: textToSend.slice(0, 2000),
       mediaType,
       readBy: [user.uid],
@@ -510,6 +578,7 @@ export function CommunityHub() {
     if (override?.metadata) payload.metadata = override.metadata.slice(0, 3900);
     if (replyTo) payload.replyToId = replyTo.id;
 
+    setSending(true);
     try {
       await addDoc(collection(db, 'chats', activeRoom.id, 'messages'), payload);
       await updateDoc(doc(db, 'chats', activeRoom.id), {
@@ -528,24 +597,51 @@ export function CommunityHub() {
       setReplyTo(null);
       setShowEmojiDrawer(false);
       setShowAttachDrawer('none');
-      wsRef.current?.send(JSON.stringify({ type: 'typing', roomId: activeRoom.id, isTyping: false }));
+      safeWsSend({ type: 'typing', roomId: activeRoom.id, isTyping: false });
 
-      // Update authentic streak on DM exchanges
+      // Notify DM peer or Group participants via WS & Firestore notifications
+      const preview = (textToSend || `[${mediaType}]`).slice(0, 120);
+      if (activeRoom.type === 'direct') {
+        const peerUid = (activeRoom.participantIds || []).find((x: string) => x !== user.uid);
+        if (peerUid) {
+          safeWsSend({ type: 'chat_message', roomId: activeRoom.id, targetUid: peerUid, preview });
+          await addDoc(collection(db, 'notifications'), {
+            userId: peerUid,
+            senderUid: user.uid,
+            roomId: activeRoom.id,
+            type: 'chat',
+            title: `New message from ${senderName}`,
+            body: preview,
+            read: false,
+            createdAt: serverTimestamp(),
+          }).catch(() => {});
+        }
+      } else {
+        safeWsSend({ type: 'chat_message', roomId: activeRoom.id, preview });
+      }
+
       await recordAuthenticStreak(activeRoom);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, `chats/${activeRoom.id}/messages`);
+    } catch (err: any) {
+      console.error('Send message error:', err);
+      pushToast(err?.message || 'Unable to send message right now. Please try again.', 'error');
+    } finally {
+      setSending(false);
     }
   };
 
   const saveEditMessage = async (msgId: string) => {
     if (!user || !activeRoom || !editMsgText.trim()) return;
-    await updateDoc(doc(db, 'chats', activeRoom.id, 'messages', msgId), {
-      text: editMsgText.trim().slice(0, 2000),
-      editedAt: serverTimestamp(),
-    }).catch((err) => handleFirestoreError(err, OperationType.UPDATE, `chats/${activeRoom.id}/messages/${msgId}`));
-    setEditingMsgId(null);
-    setEditMsgText('');
-    pushToast('Message edited', 'success');
+    try {
+      await updateDoc(doc(db, 'chats', activeRoom.id, 'messages', msgId), {
+        text: editMsgText.trim().slice(0, 2000),
+        editedAt: serverTimestamp(),
+      });
+      setEditingMsgId(null);
+      setEditMsgText('');
+      pushToast('Message edited', 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'Unable to edit message.', 'error');
+    }
   };
 
   const deleteOwnMessage = async (msgId: string) => {
@@ -554,11 +650,11 @@ export function CommunityHub() {
       text: 'This message was deleted',
       deleted: true,
       editedAt: serverTimestamp(),
-    }).catch(() => {});
+    }).catch((err) => pushToast(err?.message || 'Could not delete message.', 'error'));
   };
 
   const togglePinMessage = async (msg: any) => {
-    if (!user || !activeRoom || !user.emailVerified) return;
+    if (!user || !activeRoom) return;
     const nextPinned = !msg.pinned;
     await updateDoc(doc(db, 'chats', activeRoom.id, 'messages', msg.id), {
       pinned: nextPinned,
@@ -567,7 +663,7 @@ export function CommunityHub() {
   };
 
   const updateRoomBackground = async (themeKey: string) => {
-    if (!user || !activeRoom || !user.emailVerified) return;
+    if (!user || !activeRoom) return;
     await updateDoc(doc(db, 'chats', activeRoom.id), {
       backgroundTheme: themeKey,
       updatedAt: serverTimestamp(),
@@ -661,28 +757,39 @@ export function CommunityHub() {
   };
 
   const reactToMessage = async (msg: any, emoji: string) => {
-    if (!user || !activeRoom || !user.emailVerified) return;
+    if (!user || !activeRoom) return;
     const reactions = { ...(msg.reactions || {}) };
     reactions[emoji] = (reactions[emoji] || 0) + 1;
     await updateDoc(doc(db, 'chats', activeRoom.id, 'messages', msg.id), { reactions }).catch(() => {});
   };
 
   const sendFriendRequest = async (target: any) => {
-    if (!user || !user.emailVerified) {
-      pushToast('Verify your email to send friend requests.', 'info');
-      return;
-    }
+    if (!user) return;
+    const myName = (userProfile?.displayName || user.displayName || 'Supporter').slice(0, 64);
     const reqId = `${user.uid}_${target.uid}`.slice(0, 120);
-    await setDoc(doc(db, 'friendRequests', reqId), {
-      fromUid: user.uid,
-      toUid: target.uid,
-      fromName: userProfile?.displayName || user.displayName || 'Supporter',
-      toName: target.displayName || 'Supporter',
-      status: 'pending',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    pushToast(`Friend request sent to ${target.displayName}`, 'success');
+    try {
+      await setDoc(doc(db, 'friendRequests', reqId), {
+        fromUid: user.uid,
+        toUid: target.uid,
+        fromName: myName,
+        toName: target.displayName || 'Supporter',
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      await addDoc(collection(db, 'notifications'), {
+        userId: target.uid,
+        senderUid: user.uid,
+        type: 'friend',
+        title: 'New Friend Request',
+        body: `${myName} wants to connect with you on STR Chat.`,
+        read: false,
+        createdAt: serverTimestamp(),
+      }).catch(() => {});
+      pushToast(`Friend request sent to ${target.displayName}`, 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'Could not send friend request.', 'error');
+    }
   };
 
   const cancelOrRemoveFriendReq = async (reqId: string, label: string) => {
@@ -691,27 +798,41 @@ export function CommunityHub() {
   };
 
   const respondFriendRequest = async (req: any, status: 'accepted' | 'rejected') => {
-    await updateDoc(doc(db, 'friendRequests', req.id), {
-      status,
-      updatedAt: serverTimestamp(),
-    });
-    if (status === 'accepted' && user) {
-      const dmId = [req.fromUid, req.toUid].sort().join('_').slice(0, 120);
-      await setDoc(
-        doc(db, 'chats', dmId),
-        {
-          type: 'direct',
-          name: `${req.fromName} & ${req.toName}`.slice(0, 80),
-          backgroundTheme: 'classic',
-          createdBy: user.uid,
-          participantIds: [req.fromUid, req.toUid],
-          lastMessage: 'Say hello to start your STR Streak!',
+    try {
+      await updateDoc(doc(db, 'friendRequests', req.id), {
+        status,
+        updatedAt: serverTimestamp(),
+      });
+      if (status === 'accepted' && user) {
+        const dmId = [req.fromUid, req.toUid].sort().join('_').slice(0, 120);
+        const dmRef = doc(db, 'chats', dmId);
+        const dmSnap = await getDoc(dmRef).catch(() => null);
+        if (!dmSnap?.exists()) {
+          await setDoc(dmRef, {
+            type: 'direct',
+            name: `${req.fromName} & ${req.toName}`.slice(0, 80),
+            backgroundTheme: 'classic',
+            createdBy: user.uid,
+            participantIds: [req.fromUid, req.toUid],
+            lastMessage: 'Say hello to start your STR Streak!',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
+        await addDoc(collection(db, 'notifications'), {
+          userId: req.fromUid,
+          senderUid: user.uid,
+          roomId: dmId,
+          type: 'friend',
+          title: 'Friend Request Accepted',
+          body: `${req.toName} accepted your friend request!`,
+          read: false,
           createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-      pushToast('Friend added & private DM created!', 'success');
+        }).catch(() => {});
+        pushToast('Friend added & private DM created!', 'success');
+      }
+    } catch (err: any) {
+      pushToast(err?.message || 'Unable to respond to friend request.', 'error');
     }
   };
 
@@ -724,11 +845,8 @@ export function CommunityHub() {
       setSideTab('rooms');
       return;
     }
-    if (!user.emailVerified) {
-      pushToast('Verify your email first to start private DMs.', 'info');
-      return;
-    }
     const myName = (userProfile?.displayName || user.displayName || 'Supporter').slice(0, 36);
+    const dmRef = doc(db, 'chats', dmId);
     const newRoom = {
       type: 'direct',
       name: `${myName} & ${friendName}`.slice(0, 80),
@@ -739,14 +857,23 @@ export function CommunityHub() {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-    await setDoc(doc(db, 'chats', dmId), newRoom, { merge: true }).catch(() => {});
-    setActiveRoom({ id: dmId, ...newRoom });
-    setSideTab('rooms');
+    try {
+      const dmSnap = await getDoc(dmRef).catch(() => null);
+      if (dmSnap?.exists()) {
+        setActiveRoom({ id: dmId, ...dmSnap.data() });
+      } else {
+        await setDoc(dmRef, newRoom);
+        setActiveRoom({ id: dmId, ...newRoom });
+      }
+      setSideTab('rooms');
+    } catch (err: any) {
+      pushToast(err?.message || 'Unable to start direct chat.', 'error');
+    }
   };
 
   const saveGroupMetadata = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.emailVerified || !activeRoom || activeRoom.type !== 'group' || !editGroupName.trim()) return;
+    if (!user || !activeRoom || activeRoom.type !== 'group' || !editGroupName.trim()) return;
     await updateDoc(doc(db, 'chats', activeRoom.id), {
       name: editGroupName.trim().slice(0, 80),
       updatedAt: serverTimestamp(),
@@ -758,67 +885,98 @@ export function CommunityHub() {
   const sendGameInvite = async (
     targetUid: string,
     targetName: string,
-    gameType: 'penalty' | 'quiz' | 'higher_lower' | 'card_battle'
+    gameType: 'penalty' | 'free_kick' | 'trivia_blitz' | 'reflex_save' | 'quiz' | 'higher_lower' | 'card_battle'
   ) => {
-    if (!user || !user.emailVerified) return;
-    const seed = Math.floor(Math.random() * 100000);
-    const ref = await addDoc(collection(db, 'gameChallenges'), {
-      fromUid: user.uid,
-      toUid: targetUid,
-      fromName: userProfile?.displayName || 'Supporter',
-      toName: targetName,
-      gameType,
-      status: 'pending',
-      fromScore: 0,
-      toScore: 0,
-      seed,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    if (!user) return;
+    const myName = userProfile?.displayName || user.displayName || 'Supporter';
+    try {
+      const seed = Math.floor(Math.random() * 100000);
+      const ref = await addDoc(collection(db, 'gameChallenges'), {
+        fromUid: user.uid,
+        toUid: targetUid,
+        fromName: myName,
+        toName: targetName,
+        gameType,
+        status: 'pending',
+        fromScore: 0,
+        toScore: 0,
+        seed,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
 
-    wsRef.current?.send(
-      JSON.stringify({ type: 'game_invite', targetUid, gameType, challengeId: ref.id })
-    );
+      safeWsSend({ type: 'game_invite', targetUid, gameType, challengeId: ref.id });
 
-    const dmId = [user.uid, targetUid].sort().join('_').slice(0, 120);
-    const dmRoom = rooms.find((r) => r.id === dmId);
-    if (dmRoom) {
+      const dmId = [user.uid, targetUid].sort().join('_').slice(0, 120);
+      await setDoc(
+        doc(db, 'chats', dmId),
+        {
+          type: 'direct',
+          name: `${myName} & ${targetName}`.slice(0, 80),
+          backgroundTheme: 'classic',
+          createdBy: user.uid,
+          participantIds: [user.uid, targetUid],
+          lastMessage: `Game Challenge: ${gameType.replace('_', ' ')}`,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
       await addDoc(collection(db, 'chats', dmId, 'messages'), {
         senderId: user.uid,
-        senderName: userProfile?.displayName || 'Supporter',
+        senderName: myName,
         text: `Challenged ${targetName} to ${gameType.replace('_', ' ')}!`,
         mediaType: 'invite',
         metadata: JSON.stringify({ challengeId: ref.id, gameType }),
         readBy: [user.uid],
         createdAt: serverTimestamp(),
       }).catch(() => {});
-    }
 
-    setInviteFriendTarget(null);
-    pushToast(`Challenge sent to ${targetName}!`, 'success');
+      await addDoc(collection(db, 'notifications'), {
+        userId: targetUid,
+        senderUid: user.uid,
+        roomId: dmId,
+        type: 'challenge',
+        title: `New Game Challenge from ${myName}`,
+        body: `Accept ${gameType.replace('_', ' ')} duel in STR Games!`,
+        read: false,
+        createdAt: serverTimestamp(),
+      }).catch(() => {});
+
+      setInviteFriendTarget(null);
+      pushToast(`Challenge sent to ${targetName}!`, 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'Unable to send challenge.', 'error');
+    }
   };
 
   const createGroupChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.emailVerified || !newGroupName.trim()) return;
+    if (!user || !newGroupName.trim()) return;
     const id = `grp_${Date.now()}`;
     const participants = Array.from(new Set([user.uid, ...selectedFriendsForGroup])).slice(0, 50);
-    await setDoc(doc(db, 'chats', id), {
-      type: 'group',
-      name: newGroupName.trim().slice(0, 80),
-      avatarUrl: newGroupAvatar,
-      backgroundTheme: 'classic',
-      createdBy: user.uid,
-      participantIds: participants,
-      lastMessage: 'Group chat created',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    setNewGroupName('');
-    setNewGroupAvatar('');
-    setSelectedFriendsForGroup([]);
-    setShowNewGroup(false);
-    pushToast('Group chat created!', 'success');
+    try {
+      const groupObj = {
+        type: 'group',
+        name: newGroupName.trim().slice(0, 80),
+        avatarUrl: newGroupAvatar,
+        backgroundTheme: 'classic',
+        createdBy: user.uid,
+        participantIds: participants,
+        lastMessage: 'Group chat created',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(doc(db, 'chats', id), groupObj);
+      setActiveRoom({ id, ...groupObj });
+      setNewGroupName('');
+      setNewGroupAvatar('');
+      setSelectedFriendsForGroup([]);
+      setShowNewGroup(false);
+      pushToast('Group chat created!', 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'Unable to create group chat.', 'error');
+    }
   };
 
   const blockUser = async (targetUid: string) => {
@@ -832,7 +990,7 @@ export function CommunityHub() {
   };
 
   const reportItem = async (targetType: 'user' | 'message', targetId: string) => {
-    if (!user || !user.emailVerified) return;
+    if (!user) return;
     const repId = `rep_${Date.now()}`;
     await setDoc(doc(db, 'reports', repId), {
       reporterId: user.uid,
@@ -849,7 +1007,7 @@ export function CommunityHub() {
   // WebRTC Voice / Video Call helpers
   const startCall = async (targetUid: string, targetName: string, withVideo: boolean) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      pushToast('Real-time signaling socket is reconnecting...', 'error');
+      pushToast('Real-time signaling socket is connecting — try again in a second.', 'info');
       return;
     }
     try {
@@ -874,12 +1032,12 @@ export function CommunityHub() {
       };
       pc.onicecandidate = (ev) => {
         if (ev.candidate) {
-          wsRef.current?.send(JSON.stringify({ type: 'call_ice', targetUid, candidate: ev.candidate }));
+          safeWsSend({ type: 'call_ice', targetUid, candidate: ev.candidate });
         }
       };
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      wsRef.current.send(JSON.stringify({ type: 'call_offer', targetUid, offer, video: withVideo }));
+      safeWsSend({ type: 'call_offer', targetUid, offer, video: withVideo });
     } catch {
       pushToast('Camera or microphone permission denied.', 'error');
     }
@@ -908,13 +1066,13 @@ export function CommunityHub() {
       };
       pc.onicecandidate = (ev) => {
         if (ev.candidate) {
-          wsRef.current?.send(JSON.stringify({ type: 'call_ice', targetUid: data.fromUid, candidate: ev.candidate }));
+          safeWsSend({ type: 'call_ice', targetUid: data.fromUid, candidate: ev.candidate });
         }
       };
       await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      wsRef.current?.send(JSON.stringify({ type: 'call_answer', targetUid: data.fromUid, answer }));
+      safeWsSend({ type: 'call_answer', targetUid: data.fromUid, answer });
     } catch {
       pushToast('Incoming call missed — media permission required.', 'info');
     }
@@ -922,7 +1080,7 @@ export function CommunityHub() {
 
   const endCall = (notifyPeer = true) => {
     if (notifyPeer && callState?.peerUid) {
-      wsRef.current?.send(JSON.stringify({ type: 'call_end', targetUid: callState.peerUid }));
+      safeWsSend({ type: 'call_end', targetUid: callState.peerUid });
     }
     pcRef.current?.close();
     pcRef.current = null;
@@ -933,19 +1091,23 @@ export function CommunityHub() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-10 text-center space-y-4 max-w-xl mx-auto">
-        <MessageSquare className="w-10 h-10 text-[#00E676] mx-auto" />
-        <h1 className="font-display text-3xl font-bold">STR Chat, Friends & Streaks</h1>
-        <p className="text-sm text-slate-500">
-          Sign in or create an account to chat in real time, add friends by username or ID, build daily STR Streaks, trade Player Cards, and start voice or video calls.
+      <div className="rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-10 text-center space-y-4 max-w-xl mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-[#E11D48]/15 border border-[#E11D48]/30 flex items-center justify-center mx-auto">
+          <MessageSquare className="w-7 h-7 text-[#E11D48]" />
+        </div>
+        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">
+          STR Chat, Friends & Streaks
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Sign in or create a free account to chat in real time, search & add friends, build daily STR Streaks, trade Player Cards, and start voice or video calls.
         </p>
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-3 pt-1">
           <button
             onClick={() => {
               setAuthModalMode('signin');
               setShowAuthModal(true);
             }}
-            className="px-6 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm"
+            className="px-6 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:bg-[#BE123C] transition"
           >
             Sign In
           </button>
@@ -954,7 +1116,7 @@ export function CommunityHub() {
               setAuthModalMode('signup');
               setShowAuthModal(true);
             }}
-            className="px-6 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold"
+            className="px-6 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 text-sm font-semibold hover:border-[#E11D48]"
           >
             Create Account
           </button>
@@ -969,7 +1131,9 @@ export function CommunityHub() {
       const friendUid = r.fromUid === user.uid ? r.toUid : r.fromUid;
       const friendName = r.fromUid === user.uid ? r.toName : r.fromName;
       const profileObj = allUsers.find((u) => u.uid === friendUid);
-      const streakDoc = streaks.find((s) => (s.participantIds || []).includes(friendUid) && (s.participantIds || []).includes(user.uid));
+      const streakDoc = streaks.find(
+        (s) => (s.participantIds || []).includes(friendUid) && (s.participantIds || []).includes(user.uid)
+      );
       return {
         reqId: r.id,
         uid: friendUid,
@@ -995,7 +1159,7 @@ export function CommunityHub() {
     return (
       u.username?.toLowerCase().includes(q) ||
       u.displayName?.toLowerCase().includes(q) ||
-      u.uid?.toLowerCase() === q
+      u.uid?.toLowerCase().includes(q)
     );
   });
 
@@ -1006,13 +1170,9 @@ export function CommunityHub() {
     activeRoom?.type === 'direct'
       ? (activeRoom.participantIds || []).find((x: string) => x !== user.uid)
       : null;
-  const activeDmFriend = activeDmPeerUid
-    ? acceptedFriends.find((f) => f.uid === activeDmPeerUid)
-    : null;
-  const activeDmPeerProfile = activeDmPeerUid
-    ? allUsers.find((u) => u.uid === activeDmPeerUid)
-    : null;
-  const activeDmPeerName = activeDmFriend?.name || activeDmPeerProfile?.displayName || 'Friend';
+  const activeDmFriend = activeDmPeerUid ? acceptedFriends.find((f) => f.uid === activeDmPeerUid) : null;
+  const activeDmPeerProfile = activeDmPeerUid ? allUsers.find((u) => u.uid === activeDmPeerUid) : null;
+  const activeDmPeerName = activeDmFriend?.name || activeDmPeerProfile?.displayName || 'Supporter';
 
   const myStreaks = streaks.filter((s) => (s.participantIds || []).includes(user.uid));
 
@@ -1022,10 +1182,15 @@ export function CommunityHub() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
+            <MessageSquare className="w-7 h-7 text-[#E11D48]" />
             STR Chat, Friends & Streaks
           </h1>
           <p className="text-xs text-slate-500">
-            Your ID: <span className="font-mono-tabular select-all text-slate-700 dark:text-slate-300">{user.uid}</span> · Username: @{userProfile?.username}
+            Your ID:{' '}
+            <span className="font-mono-tabular select-all text-slate-700 dark:text-slate-300">
+              {user.uid}
+            </span>{' '}
+            · @{userProfile?.username || 'supporter'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1038,7 +1203,7 @@ export function CommunityHub() {
           </button>
           <button
             onClick={() => setShowNewGroup(!showNewGroup)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:bg-[#BE123C] transition"
           >
             <Plus className="w-4 h-4" />
             New Group Chat
@@ -1050,7 +1215,7 @@ export function CommunityHub() {
       {showNewGroup && (
         <form
           onSubmit={createGroupChat}
-          className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-4 space-y-3"
+          className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-4 space-y-3"
         >
           <div className="flex flex-wrap gap-3 items-center">
             <input
@@ -1059,38 +1224,40 @@ export function CommunityHub() {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Group chat name (e.g., Champions League Watchparty)"
-              className="flex-1 min-w-[200px] px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs"
+              className="flex-1 min-w-[200px] px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs"
             />
-            <label className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5">
-              <ImageIcon className="w-3.5 h-3.5 text-[#00E676]" />
+            <label className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 text-[#E11D48]" />
               {newGroupAvatar ? 'Group Photo Ready ✓' : 'Group Picture'}
               <input type="file" accept="image/*" onChange={handleGroupAvatarAttach} className="hidden" />
             </label>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {acceptedFriends.map((fr) => {
-              const checked = selectedFriendsForGroup.includes(fr.uid);
-              return (
-                <button
-                  type="button"
-                  key={fr.uid}
-                  onClick={() =>
-                    setSelectedFriendsForGroup((p) =>
-                      checked ? p.filter((x) => x !== fr.uid) : [...p, fr.uid]
-                    )
-                  }
-                  className={`px-3 py-1.5 rounded-lg text-xs border ${
-                    checked ? 'bg-[#00E676] text-[#060B16] border-[#00E676]' : 'border-slate-700'
-                  }`}
-                >
-                  {fr.name}
-                </button>
-              );
-            })}
-          </div>
+          {acceptedFriends.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {acceptedFriends.map((fr) => {
+                const checked = selectedFriendsForGroup.includes(fr.uid);
+                return (
+                  <button
+                    type="button"
+                    key={fr.uid}
+                    onClick={() =>
+                      setSelectedFriendsForGroup((p) =>
+                        checked ? p.filter((x) => x !== fr.uid) : [...p, fr.uid]
+                      )
+                    }
+                    className={`px-3 py-1.5 rounded-lg text-xs border transition ${
+                      checked ? 'bg-[#E11D48] text-white border-[#E11D48]' : 'border-slate-300 dark:border-white/15'
+                    }`}
+                  >
+                    {fr.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+            className="px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:bg-[#BE123C]"
           >
             Create Group
           </button>
@@ -1099,28 +1266,33 @@ export function CommunityHub() {
 
       <div className="grid lg:grid-cols-12 gap-4 min-h-[580px]">
         {/* Sidebar: Rooms / Friends / Streaks */}
-        <aside className="lg:col-span-4 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
-          <div className="p-2 border-b border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-1">
+        <aside className="lg:col-span-4 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden">
+          <div className="p-2 border-b border-slate-200 dark:border-white/10 grid grid-cols-3 gap-1">
             <button
               onClick={() => setSideTab('rooms')}
-              className={`py-2 rounded-xl text-xs font-semibold ${
-                sideTab === 'rooms' ? 'bg-[#00E676] text-[#060B16]' : 'text-slate-500'
+              className={`py-2 rounded-xl text-xs font-semibold transition ${
+                sideTab === 'rooms' ? 'bg-[#E11D48] text-white' : 'text-slate-500 hover:text-white'
               }`}
             >
               Chats ({rooms.length})
             </button>
             <button
               onClick={() => setSideTab('friends')}
-              className={`py-2 rounded-xl text-xs font-semibold ${
-                sideTab === 'friends' ? 'bg-[#00E676] text-[#060B16]' : 'text-slate-500'
+              className={`relative py-2 rounded-xl text-xs font-semibold transition ${
+                sideTab === 'friends' ? 'bg-[#E11D48] text-white' : 'text-slate-500 hover:text-white'
               }`}
             >
               Friends ({acceptedFriends.length})
+              {incomingReqs.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-white text-[#E11D48] text-[10px] font-bold">
+                  {incomingReqs.length}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setSideTab('streaks')}
-              className={`py-2 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1 ${
-                sideTab === 'streaks' ? 'bg-[#00E676] text-[#060B16]' : 'text-slate-500'
+              className={`py-2 rounded-xl text-xs font-semibold inline-flex items-center justify-center gap-1 transition ${
+                sideTab === 'streaks' ? 'bg-[#E11D48] text-white' : 'text-slate-500 hover:text-white'
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
@@ -1128,16 +1300,16 @@ export function CommunityHub() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[520px]">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[540px]">
             {/* ROOMS TAB */}
             {sideTab === 'rooms' && (
               <>
                 {rooms.length === 0 ? (
                   <div className="py-8 text-center space-y-3">
-                    <p className="text-xs text-slate-500">No club channels created yet.</p>
+                    <p className="text-xs text-slate-500">Setting up club lounges...</p>
                     <button
                       onClick={seedClubChannels}
-                      className="px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+                      className="px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold"
                     >
                       Launch Club Channels
                     </button>
@@ -1145,34 +1317,51 @@ export function CommunityHub() {
                 ) : (
                   rooms.map((r) => {
                     const peerUid = r.type === 'direct' ? (r.participantIds || []).find((x: string) => x !== user.uid) : null;
+                    const peerProf = peerUid ? allUsers.find((u) => u.uid === peerUid) : null;
                     const streakObj = peerUid
                       ? myStreaks.find((s) => (s.participantIds || []).includes(peerUid))
                       : null;
+                    const roomUnread = notifications.filter((n: any) => !n.read && n.roomId === r.id).length;
+
                     return (
                       <button
                         key={r.id}
                         onClick={() => setActiveRoom(r)}
                         className={`w-full text-left p-3 rounded-xl border transition flex items-center gap-3 ${
                           activeRoom?.id === r.id
-                            ? 'bg-[#00E676]/15 border-[#00E676]'
-                            : 'bg-slate-50 dark:bg-[#060B16] border-slate-200 dark:border-slate-800'
+                            ? 'bg-[#E11D48]/15 border-[#E11D48]'
+                            : 'bg-slate-50 dark:bg-[#07090F] border-slate-200 dark:border-white/5 hover:border-[#E11D48]/40'
                         }`}
                       >
-                        {r.avatarUrl ? (
-                          <img
-                            src={r.avatarUrl}
-                            alt={r.name}
-                            className="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-700"
-                          />
-                        ) : (
-                          <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                            <MessageSquare className="w-4 h-4 text-[#00E676]" />
-                          </div>
-                        )}
+                        <div className="relative shrink-0">
+                          {r.avatarUrl ? (
+                            <img
+                              src={r.avatarUrl}
+                              alt={r.name}
+                              className="w-9 h-9 rounded-xl object-cover border border-white/10"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-xl bg-[#E11D48]/15 border border-[#E11D48]/30 flex items-center justify-center">
+                              <MessageSquare className="w-4 h-4 text-[#E11D48]" />
+                            </div>
+                          )}
+                          {r.type === 'direct' && (
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#07090F] ${
+                                peerProf?.online ? 'bg-emerald-400' : 'bg-slate-500'
+                              }`}
+                            />
+                          )}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between text-xs font-bold gap-2">
-                            <span className="truncate">{r.name}</span>
+                            <span className="truncate text-slate-900 dark:text-white">{r.name}</span>
                             <div className="flex items-center gap-1.5 shrink-0">
+                              {roomUnread > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-[#E11D48] text-white text-[10px]">
+                                  {roomUnread}
+                                </span>
+                              )}
                               {streakObj && streakObj.count > 0 && (
                                 <span className="inline-flex items-center gap-0.5 text-[11px] font-mono-tabular text-amber-400">
                                   🔥 {streakObj.count}
@@ -1201,24 +1390,24 @@ export function CommunityHub() {
                     type="text"
                     value={friendSearchQuery}
                     onChange={(e) => setFriendSearchQuery(e.target.value)}
-                    placeholder="Find by @username or exact UID..."
-                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs"
+                    placeholder="Find by name, @username, or UID..."
+                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs focus:outline-none focus:border-[#E11D48]"
                   />
                 </div>
 
                 {incomingReqs.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold text-[#00E676]">Incoming Requests ({incomingReqs.length})</p>
+                    <p className="text-[11px] font-bold text-[#E11D48]">Incoming Requests ({incomingReqs.length})</p>
                     {incomingReqs.map((req) => (
                       <div
                         key={req.id}
-                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 text-xs"
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-[#E11D48]/30 flex items-center justify-between gap-2 text-xs"
                       >
                         <span className="font-semibold truncate">{req.fromName}</span>
                         <div className="flex gap-1">
                           <button
                             onClick={() => respondFriendRequest(req, 'accepted')}
-                            className="px-2 py-1 rounded bg-[#00E676] text-[#060B16] font-bold"
+                            className="px-2.5 py-1 rounded bg-[#E11D48] text-white font-bold"
                           >
                             Accept
                           </button>
@@ -1240,7 +1429,7 @@ export function CommunityHub() {
                     {outgoingReqs.map((req) => (
                       <div
                         key={req.id}
-                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 text-xs"
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 text-xs"
                       >
                         <span className="truncate">{req.toName}</span>
                         <button
@@ -1256,7 +1445,7 @@ export function CommunityHub() {
 
                 {onlineFriends.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold text-[#00E676]">Online Friends ({onlineFriends.length})</p>
+                    <p className="text-[11px] font-bold text-emerald-400">Online Friends ({onlineFriends.length})</p>
                     {onlineFriends.map((fr) => (
                       <FriendRow
                         key={fr.uid}
@@ -1273,7 +1462,7 @@ export function CommunityHub() {
 
                 {recentFriends.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold text-slate-400">Recently Active Friends ({recentFriends.length})</p>
+                    <p className="text-[11px] font-bold text-slate-400">Friends ({recentFriends.length})</p>
                     {recentFriends.map((fr) => (
                       <FriendRow
                         key={fr.uid}
@@ -1289,35 +1478,55 @@ export function CommunityHub() {
                 )}
 
                 <div className="space-y-2">
-                  <p className="text-[11px] font-bold text-slate-400">Discover Supporters</p>
-                  {discoverMatches.map((u) => {
-                    const alreadyFriend = acceptedFriends.some((f) => f.uid === u.uid);
-                    const alreadyPending = friendRequests.some(
-                      (r) =>
-                        r.status === 'pending' &&
-                        ((r.fromUid === user.uid && r.toUid === u.uid) ||
-                          (r.toUid === user.uid && r.fromUid === u.uid))
-                    );
-                    return (
-                      <div
-                        key={u.uid}
-                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs gap-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-semibold truncate">{u.displayName}</p>
-                          <p className="text-[10px] text-slate-500 truncate">@{u.username}</p>
+                  <p className="text-[11px] font-bold text-slate-400">Discover Supporters ({discoverMatches.length})</p>
+                  {discoverMatches.length === 0 ? (
+                    <p className="text-[11px] text-slate-500">No supporters matched your search.</p>
+                  ) : (
+                    discoverMatches.map((u) => {
+                      const alreadyFriend = acceptedFriends.some((f) => f.uid === u.uid);
+                      const alreadyPending = friendRequests.some(
+                        (r) =>
+                          r.status === 'pending' &&
+                          ((r.fromUid === user.uid && r.toUid === u.uid) ||
+                            (r.toUid === user.uid && r.fromUid === u.uid))
+                      );
+                      return (
+                        <div
+                          key={u.uid}
+                          className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs gap-2"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                u.online ? 'bg-emerald-400' : 'bg-slate-500'
+                              }`}
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold truncate text-slate-900 dark:text-white">{u.displayName}</p>
+                              <p className="text-[10px] text-slate-500 truncate">@{u.username}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => openDirectChat(u.uid, u.displayName || 'Supporter')}
+                              title="Direct message"
+                              className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-white/10 hover:bg-[#E11D48] hover:text-white text-slate-700 dark:text-white font-semibold inline-flex items-center gap-1 transition"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                            </button>
+                            {!alreadyFriend && !alreadyPending && (
+                              <button
+                                onClick={() => sendFriendRequest(u)}
+                                className="px-2.5 py-1 rounded-lg bg-[#E11D48] text-white font-bold inline-flex items-center gap-1 hover:bg-[#BE123C]"
+                              >
+                                <UserPlus className="w-3 h-3" /> Add
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {!alreadyFriend && !alreadyPending && (
-                          <button
-                            onClick={() => sendFriendRequest(u)}
-                            className="px-2.5 py-1 rounded-lg bg-[#00E676]/15 text-[#00A844] dark:text-[#00E676] font-bold inline-flex items-center gap-1 shrink-0"
-                          >
-                            <UserPlus className="w-3 h-3" /> Add
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -1344,7 +1553,7 @@ export function CommunityHub() {
                     {streaks.map((s, idx) => (
                       <div
                         key={s.id}
-                        className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 text-xs"
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 text-xs"
                       >
                         <div className="min-w-0">
                           <p className="font-bold truncate">
@@ -1368,26 +1577,28 @@ export function CommunityHub() {
 
         {/* Main Chat Thread */}
         <section
-          className={`relative lg:col-span-8 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-colors ${activeBgClass}`}
+          className={`relative lg:col-span-8 rounded-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden transition-colors ${activeBgClass}`}
         >
           {/* Goal Celebration Flash */}
           {goalBlast && (
-            <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[#00E676]/15 backdrop-blur-[1px] animate-pulse">
-              <div className="px-6 py-3 rounded-2xl bg-[#060B16]/95 border-2 border-[#00E676] text-[#00E676] font-display text-2xl font-black shadow-2xl">
-                ⚽🔥 CELEBRATION MODE!
+            <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[#E11D48]/15 backdrop-blur-[1px] animate-pulse">
+              <div className="px-6 py-3 rounded-2xl bg-[#07090F]/95 border-2 border-[#E11D48] text-white font-display text-2xl font-black shadow-2xl">
+                ⚽🔥 <span className="text-[#E11D48]">GOAL</span> CELEBRATION!
               </div>
             </div>
           )}
 
           {!activeRoom ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 space-y-2">
-              <Users className="w-8 h-8 opacity-60" />
-              <p className="text-sm font-semibold">Select a club channel or friend chat to start messaging</p>
+              <Users className="w-8 h-8 opacity-60 text-[#E11D48]" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Select a club channel or friend chat to start messaging
+              </p>
             </div>
           ) : (
             <>
               {/* Chat Header */}
-              <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-white/70 dark:bg-[#0B1324]/80 backdrop-blur-md">
+              <div className="px-5 py-3.5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 bg-white/80 dark:bg-[#0F1219]/90 backdrop-blur-md">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white truncate">
@@ -1405,7 +1616,7 @@ export function CommunityHub() {
                           setEditGroupName(activeRoom.name || '');
                         }}
                         title="Edit group name"
-                        className="text-slate-400 hover:text-[#00E676]"
+                        className="text-slate-400 hover:text-[#E11D48]"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -1415,7 +1626,7 @@ export function CommunityHub() {
                     {Object.values(typingUsers).length > 0
                       ? `${Object.values(typingUsers).join(', ')} typing...`
                       : activeDmPeerProfile
-                      ? `${activeDmPeerProfile.online ? '🟢 Online' : '⚫ Offline'} · Private DM`
+                      ? `${activeDmPeerProfile.online ? '🟢 Online' : '⚫ Offline'} · Direct Message`
                       : `${activeRoom.type.toUpperCase()} · ${activeRoom.clubTag || 'Active room'}`}
                   </p>
                 </div>
@@ -1426,21 +1637,21 @@ export function CommunityHub() {
                       <button
                         onClick={() => startCall(activeDmPeerUid, activeDmPeerName, false)}
                         title="Voice call"
-                        className="p-2 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs hover:border-[#00E676] text-[#00A844] dark:text-[#00E676]"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs hover:border-[#E11D48] text-[#E11D48]"
                       >
                         <Phone className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => startCall(activeDmPeerUid, activeDmPeerName, true)}
                         title="Video call"
-                        className="p-2 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs hover:border-[#00E676] text-[#00A844] dark:text-[#00E676]"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs hover:border-[#E11D48] text-[#E11D48]"
                       >
                         <Video className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setInviteFriendTarget({ uid: activeDmPeerUid, name: activeDmPeerName })}
                         title="Challenge to mini-game"
-                        className="p-2 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs hover:border-[#00E676]"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs hover:border-[#E11D48]"
                       >
                         <Gamepad2 className="w-4 h-4" />
                       </button>
@@ -1449,14 +1660,14 @@ export function CommunityHub() {
                   <button
                     onClick={() => setShowMsgSearch((v) => !v)}
                     title="Search messages"
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs hover:border-[#00E676]"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs hover:border-[#E11D48]"
                   >
                     <Search className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setShowAttachDrawer((p) => (p === 'bg' ? 'none' : 'bg'))}
                     title="Chat background theme"
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs hover:border-[#00E676]"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs hover:border-[#E11D48]"
                   >
                     <Palette className="w-4 h-4" />
                   </button>
@@ -1466,16 +1677,16 @@ export function CommunityHub() {
               {editingGroup && activeRoom.type === 'group' && (
                 <form
                   onSubmit={saveGroupMetadata}
-                  className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] flex items-center gap-2"
+                  className="px-4 py-2 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] flex items-center gap-2"
                 >
                   <input
                     type="text"
                     value={editGroupName}
                     onChange={(e) => setEditGroupName(e.target.value)}
                     placeholder="Rename group..."
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-xs"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-xs"
                   />
-                  <button type="submit" className="px-3 py-1.5 rounded-lg bg-[#00E676] text-[#060B16] text-xs font-bold">
+                  <button type="submit" className="px-3 py-1.5 rounded-lg bg-[#E11D48] text-white text-xs font-bold">
                     Save
                   </button>
                   <button type="button" onClick={() => setEditingGroup(false)} className="text-xs text-slate-400">
@@ -1486,7 +1697,7 @@ export function CommunityHub() {
 
               {/* Message Search Bar */}
               {showMsgSearch && (
-                <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] flex items-center gap-2">
+                <div className="px-4 py-2 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] flex items-center gap-2">
                   <Search className="w-3.5 h-3.5 text-slate-400" />
                   <input
                     type="text"
@@ -1505,9 +1716,9 @@ export function CommunityHub() {
 
               {/* Pinned Messages Banner */}
               {pinnedMessages.length > 0 && (
-                <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-[#00E676]/10 flex items-center justify-between gap-2 text-xs">
+                <div className="px-4 py-2 border-b border-slate-200 dark:border-white/10 bg-[#E11D48]/10 flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Pin className="w-3.5 h-3.5 text-[#00E676] shrink-0" />
+                    <Pin className="w-3.5 h-3.5 text-[#E11D48] shrink-0" />
                     <span className="font-bold truncate">
                       Pinned ({pinnedMessages.length}): {pinnedMessages[pinnedMessages.length - 1].text}
                     </span>
@@ -1516,227 +1727,234 @@ export function CommunityHub() {
               )}
 
               {/* Message Stream */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[400px]">
-                {visibleMessages.map((m) => {
-                  const isMine = m.senderId === user.uid;
-                  const repliedMsg = m.replyToId ? messages.find((x) => x.id === m.replyToId) : null;
-                  const cardObj =
-                    m.mediaType === 'card' && m.mediaData
-                      ? PLAYER_CARDS_CATALOG.find((c) => c.id === m.mediaData)
-                      : null;
-                  const stickerObj =
-                    m.mediaType === 'sticker' && m.mediaData
-                      ? ANIMATED_FOOTBALL_STICKERS.find((s) => s.id === m.mediaData)
-                      : null;
-                  let parsedMeta: any = null;
-                  if (m.metadata) {
-                    try {
-                      parsedMeta = JSON.parse(m.metadata);
-                    } catch {
-                      parsedMeta = null;
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[420px]">
+                {visibleMessages.length === 0 ? (
+                  <div className="py-16 text-center text-xs text-slate-500">
+                    No messages here yet. Break the ice and send the first kickoff message!
+                  </div>
+                ) : (
+                  visibleMessages.map((m) => {
+                    const isMine = m.senderId === user.uid;
+                    const repliedMsg = m.replyToId ? messages.find((x) => x.id === m.replyToId) : null;
+                    const cardObj =
+                      m.mediaType === 'card' && m.mediaData
+                        ? PLAYER_CARDS_CATALOG.find((c) => c.id === m.mediaData)
+                        : null;
+                    const stickerObj =
+                      m.mediaType === 'sticker' && m.mediaData
+                        ? ANIMATED_FOOTBALL_STICKERS.find((s) => s.id === m.mediaData)
+                        : null;
+                    let parsedMeta: any = null;
+                    if (m.metadata) {
+                      try {
+                        parsedMeta = JSON.parse(m.metadata);
+                      } catch {
+                        parsedMeta = null;
+                      }
                     }
-                  }
-                  const seenByOthers = (m.readBy || []).some((id: string) => id !== m.senderId);
+                    const seenByOthers = (m.readBy || []).some((id: string) => id !== m.senderId);
 
-                  return (
-                    <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className={`max-w-md rounded-2xl px-4 py-2.5 text-xs space-y-1.5 ${
-                          isMine
-                            ? 'bg-[#00E676] text-[#060B16]'
-                            : 'bg-slate-100 dark:bg-[#060B16]/95 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
-                        }`}
-                      >
-                        {/* Message Meta Header & Actions */}
-                        <div className="flex items-center justify-between gap-4 font-bold text-[11px] opacity-85">
-                          <span className="flex items-center gap-1">
-                            {m.senderName}
-                            {m.pinned && <Pin className="w-3 h-3" />}
-                          </span>
-                          {!m.deleted && (
-                            <div className="flex items-center gap-1.5">
-                              <button onClick={() => setReplyTo(m)} title="Reply">
-                                <Reply className="w-3 h-3" />
-                              </button>
-                              <button onClick={() => togglePinMessage(m)} title="Pin/Unpin">
-                                <Pin className="w-3 h-3" />
-                              </button>
-                              {QUICK_REACTIONS.map((em) => (
-                                <button key={em} onClick={() => reactToMessage(m, em)} title={`React ${em}`}>
-                                  {em}
-                                </button>
-                              ))}
-                              {isMine ? (
-                                <>
-                                  {m.mediaType === 'text' && (
-                                    <button
-                                      onClick={() => {
-                                        setEditingMsgId(m.id);
-                                        setEditMsgText(m.text || '');
-                                      }}
-                                      title="Edit"
-                                    >
-                                      <Edit3 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                  <button onClick={() => deleteOwnMessage(m.id)} title="Delete">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button onClick={() => reportItem('message', m.id)} title="Report">
-                                    <Flag className="w-3 h-3" />
-                                  </button>
-                                  <button onClick={() => blockUser(m.senderId)} title="Block user">
-                                    <Ban className="w-3 h-3" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Reply Quote */}
-                        {repliedMsg && !m.deleted && (
-                          <div className="px-2.5 py-1 rounded-lg bg-black/10 text-[11px] border-l-2 border-current truncate">
-                            ↩ {repliedMsg.senderName}: {repliedMsg.text}
-                          </div>
-                        )}
-
-                        {/* Media Payloads */}
-                        {!m.deleted && m.mediaType === 'image' && m.mediaData && (
-                          <img src={m.mediaData} alt="Shared attachment" className="max-h-48 rounded-xl object-cover" />
-                        )}
-                        {!m.deleted && m.mediaType === 'video' && m.mediaData && (
-                          <video src={m.mediaData} controls className="max-h-48 rounded-xl" />
-                        )}
-                        {!m.deleted && m.mediaType === 'voice' && m.mediaData && (
-                          <audio src={m.mediaData} controls className="w-56 h-8" />
-                        )}
-                        {!m.deleted && cardObj && (
-                          <div className="pt-1">
-                            <PlayerCardVisual card={cardObj} compact />
-                          </div>
-                        )}
-                        {!m.deleted && stickerObj && (
-                          <div
-                            className={`rounded-2xl p-4 bg-gradient-to-br ${stickerObj.bg} text-white text-center space-y-1`}
-                          >
-                            <div className={`text-3xl ${stickerObj.anim}`}>{stickerObj.emoji}</div>
-                            <div className="font-display font-black text-sm tracking-wide">
-                              {stickerObj.text}
-                            </div>
-                          </div>
-                        )}
-                        {!m.deleted && m.mediaType === 'match' && parsedMeta && (
-                          <button
-                            onClick={() =>
-                              setSelectedMatchForDetail({
-                                leagueId: parsedMeta.leagueId,
-                                eventId: parsedMeta.id,
-                              })
-                            }
-                            className="w-full text-left p-3 rounded-xl bg-black/15 hover:bg-black/25 transition space-y-1"
-                          >
-                            <p className="text-[10px] font-bold uppercase opacity-80">{parsedMeta.leagueName}</p>
-                            <p className="font-bold text-xs">
-                              {parsedMeta.homeName} {parsedMeta.homeScore ?? '-'} : {parsedMeta.awayScore ?? '-'} {parsedMeta.awayName}
-                            </p>
-                            <p className="text-[10px] underline">Open Match Details →</p>
-                          </button>
-                        )}
-                        {!m.deleted && m.mediaType === 'news' && parsedMeta && (
-                          <a
-                            href={parsedMeta.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block p-3 rounded-xl bg-black/15 hover:bg-black/25 transition space-y-1"
-                          >
-                            <p className="text-[10px] font-bold uppercase opacity-80">{parsedMeta.source}</p>
-                            <p className="font-bold text-xs">{parsedMeta.title}</p>
-                          </a>
-                        )}
-                        {!m.deleted && m.mediaType === 'invite' && parsedMeta && (
-                          <button
-                            onClick={() => {
-                              setPendingChallengeId(parsedMeta.challengeId);
-                              setActiveTab('games');
-                            }}
-                            className="w-full text-left p-3 rounded-xl bg-black/20 hover:bg-black/30 transition flex items-center justify-between gap-2"
-                          >
-                            <span className="font-bold text-xs">Accept {parsedMeta.gameType} Challenge</span>
-                            <Gamepad2 className="w-4 h-4" />
-                          </button>
-                        )}
-
-                        {/* Editing UI or Text */}
-                        {editingMsgId === m.id ? (
-                          <div className="flex gap-1.5 pt-1">
-                            <input
-                              type="text"
-                              value={editMsgText}
-                              onChange={(e) => setEditMsgText(e.target.value)}
-                              className="flex-1 px-2.5 py-1 rounded-lg bg-white text-slate-900 text-xs"
-                            />
-                            <button
-                              onClick={() => saveEditMessage(m.id)}
-                              className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingMsgId(null)}
-                              className="px-2 py-1 rounded-lg bg-black/20 text-[11px]"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          m.text && (
-                            <p className={`text-sm leading-relaxed ${m.deleted ? 'italic opacity-65' : ''}`}>
-                              {m.text}
-                            </p>
-                          )
-                        )}
-
-                        {/* Reactions + Edited + Read Receipt */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px]">
-                          <div className="flex flex-wrap gap-1.5">
-                            {m.reactions &&
-                              Object.entries(m.reactions).map(([em, cnt]) => (
-                                <button
-                                  key={em}
-                                  onClick={() => reactToMessage(m, em)}
-                                  className="px-1.5 py-0.5 rounded-md bg-black/10 hover:bg-black/20"
-                                >
-                                  {em} {String(cnt)}
-                                </button>
-                              ))}
-                          </div>
-                          {isMine && (
-                            <span className="inline-flex items-center gap-1 opacity-75 text-[10px]">
-                              {m.editedAt && !m.deleted && <span>(edited)</span>}
-                              {seenByOthers ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                    return (
+                      <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-md rounded-2xl px-4 py-2.5 text-xs space-y-1.5 shadow-sm ${
+                            isMine
+                              ? 'bg-[#E11D48] text-white'
+                              : 'bg-slate-100 dark:bg-[#07090F]/95 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100'
+                          }`}
+                        >
+                          {/* Message Meta Header & Actions */}
+                          <div className="flex items-center justify-between gap-4 font-bold text-[11px] opacity-90">
+                            <span className="flex items-center gap-1">
+                              {m.senderName}
+                              {m.pinned && <Pin className="w-3 h-3" />}
                             </span>
+                            {!m.deleted && (
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => setReplyTo(m)} title="Reply">
+                                  <Reply className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => togglePinMessage(m)} title="Pin/Unpin">
+                                  <Pin className="w-3 h-3" />
+                                </button>
+                                {QUICK_REACTIONS.map((em) => (
+                                  <button key={em} onClick={() => reactToMessage(m, em)} title={`React ${em}`}>
+                                    {em}
+                                  </button>
+                                ))}
+                                {isMine ? (
+                                  <>
+                                    {m.mediaType === 'text' && (
+                                      <button
+                                        onClick={() => {
+                                          setEditingMsgId(m.id);
+                                          setEditMsgText(m.text || '');
+                                        }}
+                                        title="Edit"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    <button onClick={() => deleteOwnMessage(m.id)} title="Delete">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => reportItem('message', m.id)} title="Report">
+                                      <Flag className="w-3 h-3" />
+                                    </button>
+                                    <button onClick={() => blockUser(m.senderId)} title="Block user">
+                                      <Ban className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Reply Quote */}
+                          {repliedMsg && !m.deleted && (
+                            <div className="px-2.5 py-1 rounded-lg bg-black/20 text-[11px] border-l-2 border-white/70 truncate">
+                              ↩ {repliedMsg.senderName}: {repliedMsg.text}
+                            </div>
                           )}
+
+                          {/* Media Payloads */}
+                          {!m.deleted && m.mediaType === 'image' && m.mediaData && (
+                            <img src={m.mediaData} alt="Shared attachment" className="max-h-48 rounded-xl object-cover" />
+                          )}
+                          {!m.deleted && m.mediaType === 'video' && m.mediaData && (
+                            <video src={m.mediaData} controls className="max-h-48 rounded-xl" />
+                          )}
+                          {!m.deleted && m.mediaType === 'voice' && m.mediaData && (
+                            <audio src={m.mediaData} controls className="w-56 h-8" />
+                          )}
+                          {!m.deleted && cardObj && (
+                            <div className="pt-1">
+                              <PlayerCardVisual card={cardObj} compact />
+                            </div>
+                          )}
+                          {!m.deleted && stickerObj && (
+                            <div
+                              className={`rounded-2xl p-4 bg-gradient-to-br ${stickerObj.bg} text-white text-center space-y-1`}
+                            >
+                              <div className={`text-3xl ${stickerObj.anim}`}>{stickerObj.emoji}</div>
+                              <div className="font-display font-black text-sm tracking-wide">
+                                {stickerObj.text}
+                              </div>
+                            </div>
+                          )}
+                          {!m.deleted && m.mediaType === 'match' && parsedMeta && (
+                            <button
+                              onClick={() =>
+                                setSelectedMatchForDetail({
+                                  leagueId: parsedMeta.leagueId,
+                                  eventId: parsedMeta.id,
+                                })
+                              }
+                              className="w-full text-left p-3 rounded-xl bg-black/20 hover:bg-black/30 transition space-y-1"
+                            >
+                              <p className="text-[10px] font-bold uppercase opacity-80">{parsedMeta.leagueName}</p>
+                              <p className="font-bold text-xs">
+                                {parsedMeta.homeName} {parsedMeta.homeScore ?? '-'} : {parsedMeta.awayScore ?? '-'} {parsedMeta.awayName}
+                              </p>
+                              <p className="text-[10px] underline">Open Match Details →</p>
+                            </button>
+                          )}
+                          {!m.deleted && m.mediaType === 'news' && parsedMeta && (
+                            <a
+                              href={parsedMeta.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block p-3 rounded-xl bg-black/20 hover:bg-black/30 transition space-y-1"
+                            >
+                              <p className="text-[10px] font-bold uppercase opacity-80">{parsedMeta.source}</p>
+                              <p className="font-bold text-xs">{parsedMeta.title}</p>
+                            </a>
+                          )}
+                          {!m.deleted && m.mediaType === 'invite' && parsedMeta && (
+                            <button
+                              onClick={() => {
+                                setPendingChallengeId(parsedMeta.challengeId);
+                                setActiveTab('games');
+                              }}
+                              className="w-full text-left p-3 rounded-xl bg-black/20 hover:bg-black/30 transition flex items-center justify-between gap-2"
+                            >
+                              <span className="font-bold text-xs">Accept {parsedMeta.gameType} Challenge</span>
+                              <Gamepad2 className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {/* Editing UI or Text */}
+                          {editingMsgId === m.id ? (
+                            <div className="flex gap-1.5 pt-1">
+                              <input
+                                type="text"
+                                value={editMsgText}
+                                onChange={(e) => setEditMsgText(e.target.value)}
+                                className="flex-1 px-2.5 py-1 rounded-lg bg-white text-slate-900 text-xs"
+                              />
+                              <button
+                                onClick={() => saveEditMessage(m.id)}
+                                className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingMsgId(null)}
+                                className="px-2 py-1 rounded-lg bg-black/20 text-[11px]"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            m.text && (
+                              <p className={`text-sm leading-relaxed ${m.deleted ? 'italic opacity-65' : ''}`}>
+                                {m.text}
+                              </p>
+                            )
+                          )}
+
+                          {/* Reactions + Edited + Read Receipt */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px]">
+                            <div className="flex flex-wrap gap-1.5">
+                              {m.reactions &&
+                                Object.entries(m.reactions).map(([em, cnt]) => (
+                                  <button
+                                    key={em}
+                                    onClick={() => reactToMessage(m, em)}
+                                    className="px-1.5 py-0.5 rounded-md bg-black/20 hover:bg-black/30"
+                                  >
+                                    {em} {String(cnt)}
+                                  </button>
+                                ))}
+                            </div>
+                            {isMine && (
+                              <span className="inline-flex items-center gap-1 opacity-85 text-[10px]">
+                                {m.editedAt && !m.deleted && <span>(edited)</span>}
+                                {seenByOthers ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
+                <div ref={threadBottomRef} />
               </div>
 
-              {/* Drawers: Emoji & Animated Stickers OR Card/Match/News/Bg */}
+              {/* Drawers: Emoji & Stickers OR Card/Match/News/Bg */}
               {showEmojiDrawer && (
-                <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] space-y-3">
+                <div className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] space-y-3">
                   <div className="flex flex-wrap gap-1.5">
                     {CHAT_EMOJIS.map((em) => (
                       <button
                         key={em}
                         type="button"
                         onClick={() => setMsgText((prev) => `${prev}${em}`)}
-                        className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-lg"
+                        className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 text-lg"
                       >
                         {em}
                       </button>
@@ -1769,7 +1987,7 @@ export function CommunityHub() {
                       {[
                         '⚽ GOOOAL!',
                         '🏆 UCL Night!',
-                        '💚 Clean Sheet!',
+                        '🔥 Match Winner!',
                         '🇱🇧 Cedars Pride!',
                         '⚪ Hala Madrid!',
                         '🔴 YNWA!',
@@ -1783,7 +2001,7 @@ export function CommunityHub() {
                               mediaType: 'text',
                             })
                           }
-                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] text-[11px] font-semibold"
+                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] text-[11px] font-semibold"
                         >
                           {clubReact}
                         </button>
@@ -1794,8 +2012,8 @@ export function CommunityHub() {
               )}
 
               {showAttachDrawer === 'card' && (
-                <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] space-y-2 max-h-52 overflow-y-auto">
-                  <p className="text-[11px] font-bold text-[#00E676]">Send a STR Player Card to Chat</p>
+                <div className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] space-y-2 max-h-52 overflow-y-auto">
+                  <p className="text-[11px] font-bold text-[#E11D48]">Send a STR Player Card to Chat</p>
                   <div className="grid sm:grid-cols-3 gap-2">
                     {PLAYER_CARDS_CATALOG.slice(0, 12).map((c) => (
                       <button
@@ -1808,7 +2026,7 @@ export function CommunityHub() {
                             mediaData: c.id,
                           })
                         }
-                        className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] text-left text-xs"
+                        className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] text-left text-xs"
                       >
                         <p className="font-bold truncate">{c.name}</p>
                         <p className="text-[10px] text-slate-500">
@@ -1821,8 +2039,8 @@ export function CommunityHub() {
               )}
 
               {showAttachDrawer === 'match' && (
-                <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] space-y-2 max-h-52 overflow-y-auto">
-                  <p className="text-[11px] font-bold text-[#00E676]">Share a Real Match Fixture</p>
+                <div className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] space-y-2 max-h-52 overflow-y-auto">
+                  <p className="text-[11px] font-bold text-[#E11D48]">Share a Real Match Fixture</p>
                   <div className="grid sm:grid-cols-2 gap-2">
                     {liveMatchesCache.map((m) => (
                       <button
@@ -1843,7 +2061,7 @@ export function CommunityHub() {
                             }),
                           })
                         }
-                        className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] text-left text-xs"
+                        className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] text-left text-xs"
                       >
                         <p className="font-bold truncate">
                           {m.home.shortName} {m.home.score ?? '-'} : {m.away.score ?? '-'} {m.away.shortName}
@@ -1856,8 +2074,8 @@ export function CommunityHub() {
               )}
 
               {showAttachDrawer === 'news' && (
-                <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] space-y-2 max-h-52 overflow-y-auto">
-                  <p className="text-[11px] font-bold text-[#00E676]">Share Football News Article</p>
+                <div className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] space-y-2 max-h-52 overflow-y-auto">
+                  <p className="text-[11px] font-bold text-[#E11D48]">Share Football News Article</p>
                   <div className="space-y-1.5">
                     {liveNewsCache.map((a) => (
                       <button
@@ -1870,7 +2088,7 @@ export function CommunityHub() {
                             metadata: JSON.stringify({ title: a.title, url: a.url, source: a.source }),
                           })
                         }
-                        className="w-full p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] text-left text-xs truncate"
+                        className="w-full p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] text-left text-xs truncate"
                       >
                         {a.title} ({a.source})
                       </button>
@@ -1880,7 +2098,7 @@ export function CommunityHub() {
               )}
 
               {showAttachDrawer === 'bg' && (
-                <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] flex flex-wrap gap-2">
+                <div className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] flex flex-wrap gap-2">
                   {Object.entries(CHAT_BACKGROUNDS).map(([k, bg]) => (
                     <button
                       key={k}
@@ -1888,8 +2106,8 @@ export function CommunityHub() {
                       onClick={() => updateRoomBackground(k)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold border ${
                         activeRoom.backgroundTheme === k
-                          ? 'bg-[#00E676] text-[#060B16] border-[#00E676]'
-                          : 'bg-white dark:bg-[#0B1324] border-slate-200 dark:border-slate-800'
+                          ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                          : 'bg-white dark:bg-[#0F1219] border-slate-200 dark:border-white/10'
                       }`}
                     >
                       {bg.label}
@@ -1899,7 +2117,7 @@ export function CommunityHub() {
               )}
 
               {(replyTo || pendingMedia) && (
-                <div className="px-4 py-2 bg-slate-50 dark:bg-[#060B16] border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                <div className="px-4 py-2 bg-slate-50 dark:bg-[#07090F] border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs">
                   <span className="truncate">
                     {replyTo
                       ? `Replying to ${replyTo.senderName}: ${replyTo.text}`
@@ -1919,11 +2137,11 @@ export function CommunityHub() {
               {/* Message Composer */}
               <form
                 onSubmit={(e) => sendMessage(e)}
-                className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] flex flex-wrap items-center gap-1.5"
+                className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] flex flex-wrap items-center gap-1.5"
               >
                 <label
                   title="Share photo or clip"
-                  className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-[#00E676]"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 cursor-pointer hover:border-[#E11D48]"
                 >
                   <ImageIcon className="w-4 h-4 text-slate-500" />
                   <input type="file" accept="image/*,video/*" onChange={handleFileAttach} className="hidden" />
@@ -1934,8 +2152,8 @@ export function CommunityHub() {
                   title="Record voice note"
                   className={`p-2 rounded-xl border ${
                     recording
-                      ? 'bg-rose-500 text-white border-rose-500'
-                      : 'bg-white dark:bg-[#0B1324] border-slate-200 dark:border-slate-800 text-slate-500'
+                      ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                      : 'bg-white dark:bg-[#0F1219] border-slate-200 dark:border-white/10 text-slate-500'
                   }`}
                 >
                   {recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -1944,7 +2162,7 @@ export function CommunityHub() {
                   type="button"
                   onClick={() => setShowEmojiDrawer((v) => !v)}
                   title="Emojis & animated stickers"
-                  className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-slate-500 hover:border-[#00E676]"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#E11D48]"
                 >
                   <Smile className="w-4 h-4" />
                 </button>
@@ -1952,7 +2170,7 @@ export function CommunityHub() {
                   type="button"
                   onClick={() => setShowAttachDrawer((p) => (p === 'card' ? 'none' : 'card'))}
                   title="Send Player Card"
-                  className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-slate-500 hover:border-[#00E676]"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#E11D48]"
                 >
                   <Layers className="w-4 h-4" />
                 </button>
@@ -1960,7 +2178,7 @@ export function CommunityHub() {
                   type="button"
                   onClick={openShareMatchDrawer}
                   title="Share Football Match"
-                  className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-slate-500 hover:border-[#00E676]"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#E11D48]"
                 >
                   <Trophy className="w-4 h-4" />
                 </button>
@@ -1968,7 +2186,7 @@ export function CommunityHub() {
                   type="button"
                   onClick={openShareNewsDrawer}
                   title="Share Football News"
-                  className="p-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-slate-500 hover:border-[#00E676]"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-slate-500 hover:border-[#E11D48]"
                 >
                   <Newspaper className="w-4 h-4" />
                 </button>
@@ -1978,20 +2196,19 @@ export function CommunityHub() {
                   value={msgText}
                   onChange={(e) => {
                     setMsgText(e.target.value);
-                    wsRef.current?.send(
-                      JSON.stringify({
-                        type: 'typing',
-                        roomId: activeRoom.id,
-                        isTyping: e.target.value.length > 0,
-                      })
-                    );
+                    safeWsSend({
+                      type: 'typing',
+                      roomId: activeRoom.id,
+                      isTyping: e.target.value.length > 0,
+                    });
                   }}
                   placeholder="Write a message..."
-                  className="flex-1 min-w-[140px] px-3.5 py-2 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-sm focus:outline-none focus:border-[#00E676]"
+                  className="flex-1 min-w-[140px] px-3.5 py-2 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-sm focus:outline-none focus:border-[#E11D48]"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs inline-flex items-center gap-1"
+                  disabled={sending || (!msgText.trim() && !pendingMedia)}
+                  className="px-4 py-2 rounded-xl bg-[#E11D48] text-white font-bold text-xs inline-flex items-center gap-1 hover:bg-[#BE123C] disabled:opacity-50 transition"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -2004,7 +2221,7 @@ export function CommunityHub() {
       {/* Friend Profile Modal */}
       {friendProfileModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
                 {friendProfileModal.name}
@@ -2025,7 +2242,7 @@ export function CommunityHub() {
                 {(friendProfileModal.favoriteTeams || ['No clubs listed']).map((c: string) => (
                   <span
                     key={c}
-                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#060B16] text-xs font-semibold"
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#07090F] text-xs font-semibold"
                   >
                     {c}
                   </span>
@@ -2039,7 +2256,7 @@ export function CommunityHub() {
                   setFriendProfileModal(null);
                   openDirectChat(t.uid, t.name);
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs"
               >
                 Open DM Chat
               </button>
@@ -2049,7 +2266,7 @@ export function CommunityHub() {
                   setFriendProfileModal(null);
                   setInviteFriendTarget({ uid: t.uid, name: t.name });
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 font-bold text-xs"
               >
                 Invite to Game
               </button>
@@ -2070,7 +2287,7 @@ export function CommunityHub() {
       {/* Invite Friend to Challenge Modal */}
       {inviteFriendTarget && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-xl font-bold">
                 Challenge {inviteFriendTarget.name}
@@ -2082,14 +2299,16 @@ export function CommunityHub() {
             <div className="grid grid-cols-2 gap-2.5">
               {[
                 { id: 'penalty' as const, label: 'Penalty Shootout' },
+                { id: 'free_kick' as const, label: 'Free Kick Challenge' },
                 { id: 'quiz' as const, label: 'Who Am I? Quiz' },
                 { id: 'higher_lower' as const, label: 'Higher or Lower' },
                 { id: 'card_battle' as const, label: 'Card Battle Duel' },
+                { id: 'trivia_blitz' as const, label: 'Trivia Blitz' },
               ].map((g) => (
                 <button
                   key={g.id}
                   onClick={() => sendGameInvite(inviteFriendTarget.uid, inviteFriendTarget.name, g.id)}
-                  className="p-3 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs hover:brightness-105"
+                  className="p-3 rounded-xl bg-[#E11D48] text-white font-bold text-xs hover:bg-[#BE123C] transition"
                 >
                   {g.label}
                 </button>
@@ -2102,7 +2321,7 @@ export function CommunityHub() {
       {/* Streak Rules Modal */}
       {showStreakRules && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-2xl font-bold flex items-center gap-2 text-amber-400">
                 <Flame className="w-6 h-6" />
@@ -2125,9 +2344,9 @@ export function CommunityHub() {
       {/* Active WebRTC Call Modal */}
       {callState?.active && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-[#0B1324] border border-slate-800 p-6 text-white space-y-4 text-center">
+          <div className="w-full max-w-lg rounded-3xl bg-[#0F1219] border border-white/10 p-6 text-white space-y-4 text-center">
             <h3 className="font-display text-2xl font-bold">{callState.peerName}</h3>
-            <p className="text-xs text-[#00E676]">{callState.status}</p>
+            <p className="text-xs text-[#E11D48] font-bold">{callState.status}</p>
             {callState.video && (
               <div className="grid grid-cols-2 gap-2">
                 <video ref={localVideoRef} autoPlay muted playsInline className="rounded-xl bg-black h-40 w-full object-cover" />
@@ -2136,7 +2355,7 @@ export function CommunityHub() {
             )}
             <button
               onClick={() => endCall(true)}
-              className="mx-auto inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 text-white font-bold text-sm"
+              className="mx-auto inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:bg-[#BE123C]"
             >
               <PhoneOff className="w-4 h-4" />
               End Call
@@ -2164,15 +2383,15 @@ function FriendRow({
   onRemove: () => void;
 }) {
   return (
-    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 text-xs">
       <button onClick={onOpenProfile} className="min-w-0 text-left flex items-center gap-2 flex-1">
         <span
           className={`w-2 h-2 rounded-full shrink-0 ${
-            fr.online ? 'bg-[#00E676]' : 'bg-slate-500'
+            fr.online ? 'bg-emerald-400' : 'bg-slate-500'
           }`}
         />
         <div className="min-w-0">
-          <p className="font-semibold truncate flex items-center gap-1.5">
+          <p className="font-semibold truncate flex items-center gap-1.5 text-slate-900 dark:text-white">
             {fr.name}
             {fr.streakCount > 0 && (
               <span className="text-[10px] font-mono-tabular text-amber-400">🔥 {fr.streakCount}</span>
@@ -2184,35 +2403,35 @@ function FriendRow({
         <button
           onClick={onChat}
           title="Direct message"
-          className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:text-[#00E676]"
+          className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/10 hover:text-[#E11D48]"
         >
           <MessageSquare className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={onInvite}
           title="Invite to mini-game"
-          className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:text-[#00E676]"
+          className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/10 hover:text-[#E11D48]"
         >
           <Gamepad2 className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => onCall(false)}
           title="Voice call"
-          className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:text-[#00E676]"
+          className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/10 hover:text-[#E11D48]"
         >
           <Phone className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => onCall(true)}
           title="Video call"
-          className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:text-[#00E676]"
+          className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/10 hover:text-[#E11D48]"
         >
           <Video className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={onRemove}
           title="Remove friend"
-          className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:text-rose-400"
+          className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/10 hover:text-rose-400"
         >
           <UserMinus className="w-3.5 h-3.5" />
         </button>

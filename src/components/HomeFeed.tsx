@@ -9,6 +9,7 @@ import {
   Newspaper,
   Settings2,
   Sparkles,
+  Swords,
   Trophy,
   Users,
   Vote,
@@ -86,9 +87,9 @@ export function HomeFeed() {
     <div className="space-y-8">
       {/* Guest or Unverified Account Notice */}
       {!user ? (
-        <div className="rounded-2xl bg-[#0B1324] text-white border border-slate-800 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-2xl bg-[#0F1219] text-white border border-slate-800 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-[#00E676]">STR SCORES Guest Mode</p>
+            <p className="text-sm font-semibold text-[#E11D48]">STR SCORES Guest Mode</p>
             <p className="text-xs text-slate-300 leading-relaxed">{t(lang, 'guestBanner')}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -103,44 +104,27 @@ export function HomeFeed() {
                 setAuthModalMode('signup');
                 setShowAuthModal(true);
               }}
-              className="px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold hover:brightness-105 transition whitespace-nowrap"
+              className="px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:brightness-105 transition whitespace-nowrap"
             >
               {t(lang, 'createAccount')}
             </button>
           </div>
         </div>
-      ) : !user.emailVerified ? (
-        <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
-              {t(lang, 'verifyEmailTitle')}
-            </p>
-            <p className="text-xs text-amber-700/80 dark:text-amber-200/80">
-              {t(lang, 'verifyEmailDesc')}
-            </p>
-          </div>
-          <button
-            onClick={resendVerification}
-            className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold whitespace-nowrap shrink-0"
-          >
-            {t(lang, 'resendVerification')}
-          </button>
-        </div>
       ) : null}
 
       {/* Hero Matchday Banner */}
-      <section className="relative rounded-3xl overflow-hidden bg-[#0B1324] border border-slate-800 text-white">
+      <section className="relative rounded-3xl overflow-hidden bg-[#0F1219] border border-slate-800 text-white">
         <img
           src="/src/assets/images/hero_stadium_night_1795349596580.jpg"
           alt="Stadium Matchday"
           referrerPolicy="no-referrer"
           className="absolute inset-0 w-full h-full object-cover opacity-30"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#060B16]/95 via-[#060B16]/85 to-[#060B16]/60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#07090F]/95 via-[#07090F]/85 to-[#07090F]/60" />
 
         <div className="relative z-10 p-6 sm:p-8 grid lg:grid-cols-12 gap-6 items-center">
           <div className="lg:col-span-7 space-y-4">
-            <div className="text-xs font-semibold text-[#00E676] tracking-wide">
+            <div className="text-xs font-semibold text-[#E11D48] tracking-wide">
               {liveCount > 0
                 ? `${liveCount} Live Matches Underway · ${matches.length} Fixtures Tracked`
                 : `${matches.length} Official Fixtures Today`}
@@ -160,16 +144,23 @@ export function HomeFeed() {
             <div className="flex flex-wrap gap-2.5 pt-1">
               <button
                 onClick={() => setActiveTab('scores')}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs hover:brightness-105 transition"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs hover:brightness-105 transition"
               >
                 Open Live Scores
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
+                onClick={() => setActiveTab('simulator')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 transition"
+              >
+                <Swords className="w-4 h-4 text-[#E11D48]" />
+                Match Simulator
+              </button>
+              <button
                 onClick={() => setActiveTab('ai')}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-semibold transition"
               >
-                <Bot className="w-4 h-4 text-[#00E676]" />
+                <Bot className="w-4 h-4 text-[#E11D48]" />
                 STR AI Match Center
               </button>
               <button
@@ -183,9 +174,9 @@ export function HomeFeed() {
           </div>
 
           {/* Daily Challenge Quick Tile */}
-          <div className="lg:col-span-5 rounded-2xl bg-[#060B16]/90 border border-slate-800 p-5 space-y-3">
+          <div className="lg:col-span-5 rounded-2xl bg-[#07090F]/90 border border-slate-800 p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#00E676] flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#E11D48] flex items-center gap-1.5">
                 <Flame className="w-4 h-4" />
                 {t(lang, 'dailyChallenge')}
               </span>
@@ -202,7 +193,7 @@ export function HomeFeed() {
             <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={() => setActiveTab('games')}
-                className="flex-1 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold hover:brightness-105 transition"
+                className="flex-1 py-2.5 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:brightness-105 transition"
               >
                 Play Games Hub
               </button>
@@ -228,7 +219,7 @@ export function HomeFeed() {
           </div>
           <button
             onClick={() => setActiveTab('scores')}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#00A844] dark:text-[#00E676] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#E11D48] dark:text-[#E11D48] hover:underline"
           >
             All Matches <ChevronRight className="w-4 h-4" />
           </button>
@@ -239,12 +230,12 @@ export function HomeFeed() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-32 rounded-2xl bg-slate-200/70 dark:bg-[#0B1324] animate-pulse border border-slate-200 dark:border-slate-800"
+                className="h-32 rounded-2xl bg-slate-200/70 dark:bg-[#0F1219] animate-pulse border border-slate-200 dark:border-white/10"
               />
             ))}
           </div>
         ) : spotlightMatches.length === 0 ? (
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 text-sm text-slate-500">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 text-sm text-slate-500">
             No fixtures returned for today yet. Open the Live Scoreboard to check yesterday or tomorrow.
           </div>
         ) : (
@@ -253,14 +244,14 @@ export function HomeFeed() {
               <button
                 key={m.id}
                 onClick={() => setSelectedMatchForDetail({ leagueId: m.leagueId, eventId: m.id })}
-                className="text-left rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] p-4 space-y-3 transition"
+                className="text-left rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] p-4 space-y-3 transition"
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
                   <span className="truncate font-medium">{m.leagueName}</span>
                   <span
                     className={`font-mono-tabular font-bold shrink-0 ${
                       m.status === 'LIVE' || m.status === 'HT'
-                        ? 'text-[#00A844] dark:text-[#00E676]'
+                        ? 'text-[#E11D48] dark:text-[#E11D48]'
                         : ''
                     }`}
                   >
@@ -302,12 +293,12 @@ export function HomeFeed() {
         <section className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Newspaper className="w-5 h-5 text-[#00E676]" />
+              <Newspaper className="w-5 h-5 text-[#E11D48]" />
               Latest Football Headlines
             </h2>
             <button
               onClick={() => setActiveTab('news')}
-              className="text-xs font-semibold text-[#00A844] dark:text-[#00E676] hover:underline"
+              className="text-xs font-semibold text-[#E11D48] dark:text-[#E11D48] hover:underline"
             >
               Full Newsroom
             </button>
@@ -319,7 +310,7 @@ export function HomeFeed() {
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] overflow-hidden flex flex-col transition"
+                className="group rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] overflow-hidden flex flex-col transition"
               >
                 <div className="h-36 bg-slate-900 overflow-hidden">
                   <img
@@ -353,15 +344,15 @@ export function HomeFeed() {
 
         {/* Right Column: STR VOTE + Recommended Mini-Games */}
         <section className="lg:col-span-5 space-y-5">
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Vote className="w-5 h-5 text-[#00E676]" />
+                <Vote className="w-5 h-5 text-[#E11D48]" />
                 {t(lang, 'trendingVotes')}
               </h2>
               <button
                 onClick={() => setActiveTab('vote')}
-                className="text-xs font-semibold text-[#00A844] dark:text-[#00E676] hover:underline"
+                className="text-xs font-semibold text-[#E11D48] dark:text-[#E11D48] hover:underline"
               >
                 Vote Now
               </button>
@@ -376,7 +367,7 @@ export function HomeFeed() {
                   <div
                     key={p.id}
                     onClick={() => setActiveTab('vote')}
-                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] cursor-pointer transition space-y-1"
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] cursor-pointer transition space-y-1"
                   >
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{p.title}</p>
                     <p className="text-[11px] text-slate-500 font-mono-tabular">
@@ -388,9 +379,9 @@ export function HomeFeed() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#00E676]" />
+              <Sparkles className="w-5 h-5 text-[#E11D48]" />
               Quick Matchday Shortcuts
             </h2>
             <div className="grid grid-cols-2 gap-2.5">
@@ -407,9 +398,9 @@ export function HomeFeed() {
                   <button
                     key={sc.label}
                     onClick={() => setActiveTab(sc.tab)}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] text-left space-y-1 transition"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] text-left space-y-1 transition"
                   >
-                    <Icon className="w-4 h-4 text-[#00E676]" />
+                    <Icon className="w-4 h-4 text-[#E11D48]" />
                     <p className="text-xs font-semibold text-slate-900 dark:text-white">{sc.label}</p>
                   </button>
                 );

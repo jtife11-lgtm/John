@@ -59,7 +59,7 @@ export function StatisticsCenter() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <BarChart3 className="w-7 h-7 text-[#00E676]" />
+            <BarChart3 className="w-7 h-7 text-[#E11D48]" />
             STR Statistics Center
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -70,7 +70,7 @@ export function StatisticsCenter() {
         <select
           value={leagueId}
           onChange={(e) => setLeagueId(e.target.value)}
-          className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-sm font-semibold"
+          className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-sm font-semibold"
         >
           {LEAGUES_CATALOG.map((lg) => (
             <option key={lg.id} value={lg.id}>
@@ -82,7 +82,7 @@ export function StatisticsCenter() {
 
       {loading ? (
         <div className="py-16 flex flex-col items-center gap-3 text-slate-500">
-          <Loader2 className="w-7 h-7 animate-spin text-[#00E676]" />
+          <Loader2 className="w-7 h-7 animate-spin text-[#E11D48]" />
           <p className="text-sm">Loading standings and player leaders...</p>
         </div>
       ) : error ? (
@@ -92,8 +92,8 @@ export function StatisticsCenter() {
       ) : (
         <div className="grid lg:grid-cols-12 gap-6">
           {/* League Table */}
-          <div className="lg:col-span-8 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="lg:col-span-8 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">
                 League Table
               </h2>
@@ -108,7 +108,7 @@ export function StatisticsCenter() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs sm:text-sm">
-                  <thead className="bg-slate-50 dark:bg-[#060B16] text-slate-500 text-[11px] uppercase">
+                  <thead className="bg-slate-50 dark:bg-[#07090F] text-slate-500 text-[11px] uppercase">
                     <tr>
                       <th className="py-2.5 px-3 text-left">#</th>
                       <th className="py-2.5 px-3 text-left">Club</th>
@@ -141,7 +141,7 @@ export function StatisticsCenter() {
                           {row.goalsFor}:{row.goalsAgainst}
                         </td>
                         <td className="py-2.5 px-2 text-right">{row.goalDiff}</td>
-                        <td className="py-2.5 px-3 text-right font-extrabold text-[#00A844] dark:text-[#00E676]">
+                        <td className="py-2.5 px-3 text-right font-extrabold text-[#E11D48] dark:text-[#E11D48]">
                           {row.points}
                         </td>
                       </tr>
@@ -155,7 +155,7 @@ export function StatisticsCenter() {
           {/* Right Column: Visual Points Chart + Top Scorers/Assists */}
           <div className="lg:col-span-4 space-y-5">
             {topSix.length > 0 && (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
                 <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
                   Title Race Points Distribution
                 </h3>
@@ -164,13 +164,13 @@ export function StatisticsCenter() {
                     <div key={row.teamName} className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="font-medium truncate max-w-[170px]">{row.teamName}</span>
-                        <span className="font-mono-tabular font-bold text-[#00A844] dark:text-[#00E676]">
+                        <span className="font-mono-tabular font-bold text-[#E11D48] dark:text-[#E11D48]">
                           {row.points} pts
                         </span>
                       </div>
                       <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div
-                          className="h-full bg-[#00E676] rounded-full"
+                          className="h-full bg-[#E11D48] rounded-full"
                           style={{ width: `${Math.round((row.points / maxPts) * 100)}%` }}
                         />
                       </div>
@@ -180,9 +180,9 @@ export function StatisticsCenter() {
               </div>
             )}
 
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
               <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-[#00E676]" />
+                <Trophy className="w-4 h-4 text-[#E11D48]" />
                 Top Goalscorers
               </h3>
               {scorers.length === 0 ? (
@@ -197,7 +197,7 @@ export function StatisticsCenter() {
                         </p>
                         <p className="text-[11px] text-slate-500 truncate">{p.teamName}</p>
                       </div>
-                      <span className="font-mono-tabular font-bold text-[#00A844] dark:text-[#00E676]">
+                      <span className="font-mono-tabular font-bold text-[#E11D48] dark:text-[#E11D48]">
                         {p.value}
                       </span>
                     </div>
@@ -207,7 +207,7 @@ export function StatisticsCenter() {
             </div>
 
             {assists.length > 0 && (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
                 <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
                   Top Assists
                 </h3>
@@ -228,7 +228,7 @@ export function StatisticsCenter() {
       )}
 
       {/* Compare Teams or Players */}
-      <section className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+      <section className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-5">
         <div>
           <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
             Compare Teams or Players (Real Database Lookup)
@@ -266,19 +266,19 @@ export function StatisticsCenter() {
                   value={slot.val}
                   onChange={(e) => slot.setVal(e.target.value)}
                   placeholder={`Search team or player (${slot.label})...`}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs"
                 />
                 <button
                   type="button"
                   onClick={() => runEntitySearch(slot.val, slot.setList)}
-                  className="px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold inline-flex items-center gap-1"
+                  className="px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold inline-flex items-center gap-1"
                 >
                   <Search className="w-3.5 h-3.5" />
                   Find
                 </button>
               </div>
               {slot.list.length > 0 && (
-                <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10 divide-y divide-slate-100 dark:divide-slate-800">
                   {slot.list.map((item) => (
                     <button
                       key={item.id}
@@ -296,7 +296,7 @@ export function StatisticsCenter() {
                 </div>
               )}
               {slot.chosen && (
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 space-y-2">
                   <div className="flex items-center gap-3">
                     {slot.chosen.imageUrl && (
                       <img

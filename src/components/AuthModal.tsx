@@ -212,8 +212,8 @@ export function AuthModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto">
-        <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden my-auto">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src="/src/assets/images/str_scores_logo_1795349596176.jpg"
@@ -245,7 +245,7 @@ export function AuthModal() {
             </div>
           )}
           {infoMsg && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-[#00E676] text-xs leading-relaxed">
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-[#E11D48] text-xs leading-relaxed">
               {infoMsg}
             </div>
           )}
@@ -301,7 +301,7 @@ export function AuthModal() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                   />
                 </div>
               </div>
@@ -318,7 +318,7 @@ export function AuthModal() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                    className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                   />
                   <button
                     type="button"
@@ -336,14 +336,14 @@ export function AuthModal() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded accent-[#00E676]"
+                    className="rounded accent-[#E11D48]"
                   />
                   Remember me
                 </label>
                 <button
                   type="button"
                   onClick={() => setView('reset')}
-                  className="text-[#00C853] dark:text-[#00E676] font-medium hover:underline"
+                  className="text-[#00C853] dark:text-[#E11D48] font-medium hover:underline"
                 >
                   Forgot password?
                 </button>
@@ -352,7 +352,7 @@ export function AuthModal() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm hover:brightness-105 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full py-3 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:brightness-105 transition flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Sign In
@@ -366,7 +366,7 @@ export function AuthModal() {
                     setView('signup');
                     setAuthModalMode('signup');
                   }}
-                  className="text-[#00C853] dark:text-[#00E676] font-semibold hover:underline"
+                  className="text-[#00C853] dark:text-[#E11D48] font-semibold hover:underline"
                 >
                   Create Account
                 </button>
@@ -389,7 +389,7 @@ export function AuthModal() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Alex Haddad"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                     />
                   </div>
                 </div>
@@ -403,7 +403,7 @@ export function AuthModal() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="alex_10"
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                   />
                 </div>
               </div>
@@ -418,7 +418,7 @@ export function AuthModal() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                 />
               </div>
 
@@ -433,7 +433,7 @@ export function AuthModal() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min 6 chars"
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                   />
                 </div>
                 <div>
@@ -446,7 +446,7 @@ export function AuthModal() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat"
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
                   />
                 </div>
               </div>
@@ -457,11 +457,11 @@ export function AuthModal() {
                     type="checkbox"
                     checked={showPassword}
                     onChange={(e) => setShowPassword(e.target.checked)}
-                    className="mr-1.5 accent-[#00E676]"
+                    className="mr-1.5 accent-[#E11D48]"
                   />
                   Show passwords
                 </label>
-                <label className="cursor-pointer text-[#00C853] dark:text-[#00E676] font-medium">
+                <label className="cursor-pointer text-[#00C853] dark:text-[#E11D48] font-medium">
                   Upload Photo (optional)
                   <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
                 </label>
@@ -472,7 +472,7 @@ export function AuthModal() {
                   type="checkbox"
                   checked={acceptedTerms}
                   onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-0.5 rounded accent-[#00E676]"
+                  className="mt-0.5 rounded accent-[#E11D48]"
                 />
                 <span>
                   I accept the STR SCORES Terms of Service and Privacy Policy (no gambling, verified fair play).
@@ -482,7 +482,7 @@ export function AuthModal() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm hover:brightness-105 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full py-3 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:brightness-105 transition flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Create Account & Send Verification
@@ -496,7 +496,7 @@ export function AuthModal() {
                     setView('signin');
                     setAuthModalMode('signin');
                   }}
-                  className="text-[#00C853] dark:text-[#00E676] font-semibold hover:underline"
+                  className="text-[#00C853] dark:text-[#E11D48] font-semibold hover:underline"
                 >
                   Sign In
                 </button>
@@ -515,12 +515,12 @@ export function AuthModal() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#00E676]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-[#E11D48]"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm hover:brightness-105 transition flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:brightness-105 transition flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Send Reset Link

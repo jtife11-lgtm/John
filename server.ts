@@ -475,17 +475,28 @@ app.get('/api/football/match/:leagueId/:eventId', async (req, res) => {
     const rosters: any[] = Array.isArray(raw?.rosters) ? raw.rosters : [];
     const lineups: TeamLineup[] = rosters.map((r) => {
       const entries: any[] = Array.isArray(r.roster) ? r.roster : [];
-      const mapped: LineupPlayer[] = entries.map((p) => ({
-        id: String(p?.athlete?.id || p?.athlete?.displayName || ''),
-        name: p?.athlete?.displayName || 'Player',
-        jersey: String(p?.jersey || ''),
-        position: p?.position?.abbreviation || p?.position?.name || '',
-        starter: Boolean(p?.starter),
-        photo: p?.athlete?.headshot?.href || '',
-      }));
+      const mapped: LineupPlayer[] = entries.map((p) => {
+        const fp = Number(p?.formationPlace || 0);
+        return {
+          id: String(p?.athlete?.id || p?.athlete?.displayName || ''),
+          name: p?.athlete?.displayName || 'Player',
+          jersey: String(p?.jersey || ''),
+          position: p?.position?.abbreviation || p?.position?.name || '',
+          starter: Boolean(p?.starter),
+          formationPlace: Number.isFinite(fp) && fp > 0 ? fp : undefined,
+          photo: p?.athlete?.headshot?.href || '',
+        };
+      });
+      const rTeamId = String(r?.team?.id || '');
+      const resolvedLogo =
+        r?.team?.logo ||
+        r?.team?.logos?.[0]?.href ||
+        (rTeamId === match.home.id ? match.home.logo : match.away.logo) ||
+        '';
       return {
-        teamId: String(r?.team?.id || ''),
+        teamId: rTeamId,
         teamName: r?.team?.displayName || '',
+        teamLogo: resolvedLogo,
         formation: r?.formation || 'Formation unavailable',
         starters: mapped.filter((p) => p.starter),
         subs: mapped.filter((p) => !p.starter),
@@ -1280,6 +1291,29 @@ wss.on('connection', (ws) => {
           },
           ws
         );
+        return;
+      }
+
+      if (msg.type === 'chat_message' && meta.uid) {
+        const roomId = typeof msg.roomId === 'string' ? msg.roomId.slice(0, 128) : meta.roomId;
+        const targetUid = typeof msg.targetUid === 'string' ? msg.targetUid.slice(0, 128) : '';
+        const rawText = typeof msg.preview === 'string' ? msg.preview : typeof msg.text === 'string' ? msg.text : 'New message';
+        const relayPayload = JSON.stringify({
+          type: 'chat_message',
+          roomId,
+          fromUid: meta.uid,
+          fromName: meta.displayName || 'Supporter',
+          preview: rawText.slice(0, 140),
+          at: new Date().toISOString(),
+        });
+        for (const [clientWs, clientMeta] of wsClients.entries()) {
+          if (clientWs === ws || clientWs.readyState !== WebSocket.OPEN) continue;
+          const inRoom = Boolean(roomId && clientMeta.roomId === roomId);
+          const isTarget = Boolean(targetUid && clientMeta.uid === targetUid);
+          if (inRoom || isTarget) {
+            clientWs.send(relayPayload);
+          }
+        }
         return;
       }
 

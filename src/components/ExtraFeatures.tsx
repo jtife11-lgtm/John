@@ -31,7 +31,7 @@ export function ExtraFeatures() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 rounded-xl p-1 w-fit">
+      <div className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 rounded-xl p-1 w-fit">
         {[
           { id: 'glossary' as const, label: 'Football Glossary', icon: BookOpen },
           { id: 'stadiums' as const, label: 'Stadiums Guide', icon: MapPin },
@@ -45,7 +45,7 @@ export function ExtraFeatures() {
               onClick={() => setSubTab(item.id)}
               className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition ${
                 subTab === item.id
-                  ? 'bg-[#00E676] text-[#060B16]'
+                  ? 'bg-[#E11D48] text-white'
                   : 'text-slate-600 dark:text-slate-300'
               }`}
             >
@@ -61,9 +61,9 @@ export function ExtraFeatures() {
           {FOOTBALL_GLOSSARY.map((item) => (
             <div
               key={item.term}
-              className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-2"
+              className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-2"
             >
-              <p className="text-[11px] font-semibold text-[#00A844] dark:text-[#00E676]">
+              <p className="text-[11px] font-semibold text-[#E11D48] dark:text-[#E11D48]">
                 {item.category}
               </p>
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">
@@ -82,13 +82,13 @@ export function ExtraFeatures() {
           {STADIUMS_DIRECTORY.map((st) => (
             <div
               key={st.name}
-              className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-2.5"
+              className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-2.5"
             >
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">
                 {st.name}
               </h2>
               <p className="text-xs text-slate-500">{st.city}</p>
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-xs">
+              <div className="pt-2 border-t border-slate-100 dark:border-white/10 space-y-1 text-xs">
                 <p>
                   <span className="text-slate-500">Home: </span>
                   <span className="font-semibold">{st.clubs}</span>
@@ -112,7 +112,7 @@ export function ExtraFeatures() {
       )}
 
       {subTab === 'calendar' && (
-        <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 divide-y divide-slate-100 dark:divide-slate-800">
           {calendarMatches.length === 0 ? (
             <p className="p-8 text-center text-sm text-slate-500">
               Loading current matchday calendar...
@@ -132,7 +132,7 @@ export function ExtraFeatures() {
                     {m.leagueName} · {m.venue || 'Venue TBD'}
                   </p>
                 </div>
-                <span className="font-mono-tabular font-semibold text-[#00A844] dark:text-[#00E676] shrink-0">
+                <span className="font-mono-tabular font-semibold text-[#E11D48] dark:text-[#E11D48] shrink-0">
                   {m.date ? new Date(m.date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : m.clock}
                 </span>
               </div>
@@ -143,12 +143,12 @@ export function ExtraFeatures() {
 
       {subTab === 'clubs' && (
         <div className="space-y-4">
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-bold">Followed Clubs ({favTeams.length})</h2>
               <button
                 onClick={() => setShowOnboarding(true)}
-                className="px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+                className="px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold"
               >
                 Edit Selections
               </button>
@@ -157,7 +157,7 @@ export function ExtraFeatures() {
               {favTeams.map((team) => (
                 <span
                   key={team}
-                  className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs font-semibold"
+                  className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs font-semibold"
                 >
                   {team}
                 </span>
@@ -165,8 +165,8 @@ export function ExtraFeatures() {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 flex items-start gap-3">
-            <Smartphone className="w-5 h-5 text-[#00E676] shrink-0 mt-0.5" />
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 flex items-start gap-3">
+            <Smartphone className="w-5 h-5 text-[#E11D48] shrink-0 mt-0.5" />
             <div className="space-y-1 text-xs">
               <p className="font-bold text-slate-900 dark:text-white">
                 Android APK Ready (Capacitor Configured)

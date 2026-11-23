@@ -167,7 +167,7 @@ export function PlayerCardsHub() {
           setDreamSlots(Array.isArray(data.dreamSlots) ? data.dreamSlots : []);
           setPacksOpened(Number(data.packsOpened || 0));
           setCollectionAchievements(Array.isArray(data.achievements) ? data.achievements : []);
-        } else if (user.emailVerified) {
+        } else {
           await setDoc(colRef, {
             userId: user.uid,
             cardCounts: STARTER_CARDS,
@@ -234,7 +234,7 @@ export function PlayerCardsHub() {
 
   // Settle accepted outgoing trades cleanly into sender's own collection
   useEffect(() => {
-    if (!user || !user.emailVerified) return;
+    if (!user) return;
     const unsettled = trades.filter(
       (t) => t.fromUid === user.uid && t.status === 'accepted' && t.fromSettled === false
     );
@@ -275,7 +275,6 @@ export function PlayerCardsHub() {
       localStorage.setItem('str_guest_cards', JSON.stringify(nextCounts));
       return;
     }
-    if (!user.emailVerified) return;
 
     await setDoc(
       doc(db, 'cardCollections', user.uid),
@@ -404,8 +403,10 @@ export function PlayerCardsHub() {
 
   const sendTradeOffer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.emailVerified) {
-      pushToast('Sign in with a verified email to trade cards with friends.', 'info');
+    if (!user) {
+      setAuthModalMode('signin');
+      setShowAuthModal(true);
+      pushToast('Sign in to trade cards with friends.', 'info');
       return;
     }
     const target = friends.find((f) => f.uid === tradeTargetUid);
@@ -474,9 +475,9 @@ export function PlayerCardsHub() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="rounded-3xl bg-[#0B1324] border border-slate-800 text-white p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-3xl bg-[#0F1219] border border-slate-800 text-white p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-bold text-[#00E676] tracking-wider">STR PLAYER CARDS</p>
+          <p className="text-xs font-bold text-[#E11D48] tracking-wider">STR PLAYER CARDS</p>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold">
             Collectible Football Cards, Packs & Dream XI
           </h1>
@@ -489,11 +490,11 @@ export function PlayerCardsHub() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <div className="px-4 py-2.5 rounded-2xl bg-[#060B16] border border-slate-800 text-right">
+          <div className="px-4 py-2.5 rounded-2xl bg-[#07090F] border border-slate-800 text-right">
             <p className="text-[11px] text-slate-400">Points Balance</p>
-            <p className="font-mono-tabular text-xl font-black text-[#00E676]">{currentPoints}</p>
+            <p className="font-mono-tabular text-xl font-black text-[#E11D48]">{currentPoints}</p>
           </div>
-          <div className="px-4 py-2.5 rounded-2xl bg-[#060B16] border border-slate-800 text-right">
+          <div className="px-4 py-2.5 rounded-2xl bg-[#07090F] border border-slate-800 text-right">
             <p className="text-[11px] text-slate-400">Collected</p>
             <p className="font-mono-tabular text-xl font-black text-white">
               {ownedIds.length}/{PLAYER_CARDS_CATALOG.length}
@@ -520,8 +521,8 @@ export function PlayerCardsHub() {
               onClick={() => setSubTab(t.id)}
               className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition ${
                 subTab === t.id
-                  ? 'bg-[#00E676] text-[#060B16]'
-                  : 'bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-[#00E676]'
+                  ? 'bg-[#E11D48] text-white'
+                  : 'bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-[#E11D48]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -534,7 +535,7 @@ export function PlayerCardsHub() {
       {/* COLLECTION BINDER */}
       {subTab === 'collection' && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 rounded-2xl p-4">
             <div className="flex flex-wrap items-center gap-1.5">
               {(['All', 'Icon', 'Legendary', 'Epic', 'Rare', 'Common'] as const).map((r) => (
                 <button
@@ -542,8 +543,8 @@ export function PlayerCardsHub() {
                   onClick={() => setRarityFilter(r)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
                     rarityFilter === r
-                      ? 'bg-[#00E676] text-[#060B16]'
-                      : 'bg-slate-100 dark:bg-[#060B16] text-slate-500'
+                      ? 'bg-[#E11D48] text-white'
+                      : 'bg-slate-100 dark:bg-[#07090F] text-slate-500'
                   }`}
                 >
                   {r}
@@ -557,8 +558,8 @@ export function PlayerCardsHub() {
                   onClick={() => setPosFilter(pos)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold ${
                     posFilter === pos
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-[#060B16]'
-                      : 'bg-slate-100 dark:bg-[#060B16] text-slate-500'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-white'
+                      : 'bg-slate-100 dark:bg-[#07090F] text-slate-500'
                   }`}
                 >
                   {pos}
@@ -568,7 +569,7 @@ export function PlayerCardsHub() {
                 onClick={() => setOwnedOnly((v) => !v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
                   ownedOnly
-                    ? 'border-[#00E676] text-[#00A844] dark:text-[#00E676]'
+                    ? 'border-[#E11D48] text-[#E11D48] dark:text-[#E11D48]'
                     : 'border-slate-300 dark:border-slate-700 text-slate-500'
                 }`}
               >
@@ -598,10 +599,10 @@ export function PlayerCardsHub() {
             {PACK_TYPES.map((pk) => (
               <div
                 key={pk.id}
-                className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between space-y-4"
+                className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-2">
-                  <div className="w-11 h-11 rounded-2xl bg-[#00E676]/15 flex items-center justify-center text-[#00A844] dark:text-[#00E676]">
+                  <div className="w-11 h-11 rounded-2xl bg-[#E11D48]/15 flex items-center justify-center text-[#E11D48] dark:text-[#E11D48]">
                     <PackageOpen className="w-6 h-6" />
                   </div>
                   <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
@@ -613,7 +614,7 @@ export function PlayerCardsHub() {
                 <button
                   disabled={openingPack}
                   onClick={() => handleOpenPack(pk.id, pk.cost)}
-                  className="w-full py-3 rounded-xl bg-[#00E676] text-[#060B16] font-extrabold text-xs hover:brightness-105 transition disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-[#E11D48] text-white font-extrabold text-xs hover:brightness-105 transition disabled:opacity-50"
                 >
                   {openingPack ? 'Opening Pack...' : `Open Pack · ${pk.cost} pts`}
                 </button>
@@ -622,9 +623,9 @@ export function PlayerCardsHub() {
           </div>
 
           {revealedPack && (
-            <div className="rounded-3xl bg-[#0B1324] border-2 border-[#00E676] p-6 space-y-4 text-white">
+            <div className="rounded-3xl bg-[#0F1219] border-2 border-[#E11D48] p-6 space-y-4 text-white">
               <div className="flex items-center justify-between">
-                <h3 className="font-display text-2xl font-bold flex items-center gap-2 text-[#00E676]">
+                <h3 className="font-display text-2xl font-bold flex items-center gap-2 text-[#E11D48]">
                   <Sparkles className="w-5 h-5" />
                   Pack Walkout Reveal!
                 </h3>
@@ -654,7 +655,7 @@ export function PlayerCardsHub() {
                 <h2 className="font-display text-2xl font-bold">Dream Team Builder</h2>
                 <p className="text-xs text-emerald-200/80">
                   {dreamCards.length}/11 Selected · Average Squad Rating:{' '}
-                  <span className="font-mono-tabular font-bold text-[#00E676]">{dreamAvgOvr || '-'}</span>
+                  <span className="font-mono-tabular font-bold text-[#E11D48]">{dreamAvgOvr || '-'}</span>
                 </p>
               </div>
               <div className="flex gap-1.5">
@@ -664,8 +665,8 @@ export function PlayerCardsHub() {
                     onClick={() => persistCollection(cardCounts, fm, dreamSlots, packsOpened, collectionAchievements)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
                       dreamFormation === fm
-                        ? 'bg-[#00E676] text-[#060B16]'
-                        : 'bg-[#060B16]/70 text-emerald-100 border border-emerald-800'
+                        ? 'bg-[#E11D48] text-white'
+                        : 'bg-[#07090F]/70 text-emerald-100 border border-emerald-800'
                     }`}
                   >
                     {fm}
@@ -683,11 +684,11 @@ export function PlayerCardsHub() {
                     onClick={() => c && toggleDreamSlot(c.id)}
                     className={`p-3 rounded-xl border ${
                       c
-                        ? 'bg-[#060B16]/90 border-[#00E676]/60 cursor-pointer hover:border-rose-400'
-                        : 'bg-[#060B16]/40 border-dashed border-emerald-700/70'
+                        ? 'bg-[#07090F]/90 border-[#E11D48]/60 cursor-pointer hover:border-rose-400'
+                        : 'bg-[#07090F]/40 border-dashed border-emerald-700/70'
                     }`}
                   >
-                    <p className="text-[10px] font-bold text-[#00E676]">
+                    <p className="text-[10px] font-bold text-[#E11D48]">
                       Slot {idx + 1} · Target {slotPos}
                     </p>
                     {c ? (
@@ -706,7 +707,7 @@ export function PlayerCardsHub() {
             </div>
           </div>
 
-          <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
               Owned Cards (Tap to Add/Remove)
             </h3>
@@ -719,8 +720,8 @@ export function PlayerCardsHub() {
                     onClick={() => toggleDreamSlot(c.id)}
                     className={`w-full p-3 rounded-xl border flex items-center justify-between text-xs transition ${
                       inSquad
-                        ? 'bg-[#00E676]/15 border-[#00E676] text-[#00A844] dark:text-[#00E676]'
-                        : 'bg-slate-50 dark:bg-[#060B16] border-slate-200 dark:border-slate-800'
+                        ? 'bg-[#E11D48]/15 border-[#E11D48] text-[#E11D48] dark:text-[#E11D48]'
+                        : 'bg-slate-50 dark:bg-[#07090F] border-slate-200 dark:border-white/10'
                     }`}
                   >
                     <div className="text-left">
@@ -743,12 +744,12 @@ export function PlayerCardsHub() {
 
       {/* COMPARE CARDS */}
       {subTab === 'compare' && (
-        <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-6">
+        <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-6">
           <div className="grid sm:grid-cols-2 gap-4">
             <select
               value={compareA}
               onChange={(e) => setCompareA(e.target.value)}
-              className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm font-semibold"
+              className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm font-semibold"
             >
               {PLAYER_CARDS_CATALOG.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -759,7 +760,7 @@ export function PlayerCardsHub() {
             <select
               value={compareB}
               onChange={(e) => setCompareB(e.target.value)}
-              className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm font-semibold"
+              className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm font-semibold"
             >
               {PLAYER_CARDS_CATALOG.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -780,18 +781,18 @@ export function PlayerCardsHub() {
                 return (
                   <div key={statKey} className="space-y-1">
                     <div className="flex justify-between text-xs font-mono-tabular font-bold">
-                      <span className={v1 >= v2 ? 'text-[#00A844] dark:text-[#00E676]' : 'text-slate-400'}>
+                      <span className={v1 >= v2 ? 'text-[#E11D48] dark:text-[#E11D48]' : 'text-slate-400'}>
                         {v1}
                       </span>
                       <span className="uppercase text-slate-500">{statKey}</span>
-                      <span className={v2 >= v1 ? 'text-[#00A844] dark:text-[#00E676]' : 'text-slate-400'}>
+                      <span className={v2 >= v1 ? 'text-[#E11D48] dark:text-[#E11D48]' : 'text-slate-400'}>
                         {v2}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-1 h-2">
                       <div className="bg-slate-200 dark:bg-slate-800 rounded-l-full overflow-hidden flex justify-end">
                         <div
-                          className="h-full bg-[#00E676]"
+                          className="h-full bg-[#E11D48]"
                           style={{ width: `${v1}%` }}
                         />
                       </div>
@@ -815,7 +816,7 @@ export function PlayerCardsHub() {
 
       {/* CARD BATTLE */}
       {subTab === 'battle' && (
-        <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+        <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
@@ -828,7 +829,7 @@ export function PlayerCardsHub() {
             <select
               value={battleCardId}
               onChange={(e) => setBattleCardId(e.target.value)}
-              className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs font-bold"
+              className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs font-bold"
             >
               {(ownedCards.length > 0 ? ownedCards : PLAYER_CARDS_CATALOG).map((c) => (
                 <option key={c.id} value={c.id}>
@@ -843,7 +844,7 @@ export function PlayerCardsHub() {
               <button
                 key={sk}
                 onClick={() => playCardBattle(sk)}
-                className="py-2.5 px-3 rounded-xl bg-[#00E676] text-[#060B16] font-extrabold text-xs uppercase hover:brightness-105 transition"
+                className="py-2.5 px-3 rounded-xl bg-[#E11D48] text-white font-extrabold text-xs uppercase hover:brightness-105 transition"
               >
                 Battle {sk}
               </button>
@@ -859,7 +860,7 @@ export function PlayerCardsHub() {
                 <div
                   className={`p-4 rounded-xl border text-center font-bold text-sm ${
                     battleResult.won
-                      ? 'bg-emerald-500/15 border-[#00E676] text-[#00A844] dark:text-[#00E676]'
+                      ? 'bg-emerald-500/15 border-[#E11D48] text-[#E11D48] dark:text-[#E11D48]'
                       : battleResult.draw
                       ? 'bg-amber-500/15 border-amber-400 text-amber-400'
                       : 'bg-rose-500/15 border-rose-500 text-rose-400'
@@ -878,9 +879,9 @@ export function PlayerCardsHub() {
       {/* FAIR SERVER-CONTROLLED TRADING */}
       {subTab === 'trades' && (
         <div className="grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+          <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4">
             <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#00E676]" />
+              <Shield className="w-5 h-5 text-[#E11D48]" />
               Safe Card Trading
             </h2>
             <p className="text-xs text-slate-500">
@@ -892,7 +893,7 @@ export function PlayerCardsHub() {
                   setAuthModalMode('signin');
                   setShowAuthModal(true);
                 }}
-                className="w-full py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs"
+                className="w-full py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs"
               >
                 Sign In to Trade with Friends
               </button>
@@ -903,7 +904,7 @@ export function PlayerCardsHub() {
                   <select
                     value={tradeTargetUid}
                     onChange={(e) => setTradeTargetUid(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10"
                   >
                     <option value="">Select accepted friend...</option>
                     {friends.map((f) => (
@@ -918,7 +919,7 @@ export function PlayerCardsHub() {
                   <select
                     value={tradeOfferCardId}
                     onChange={(e) => setTradeOfferCardId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10"
                   >
                     {ownedCards.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -932,7 +933,7 @@ export function PlayerCardsHub() {
                   <select
                     value={tradeReqCardId}
                     onChange={(e) => setTradeReqCardId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10"
                   >
                     {PLAYER_CARDS_CATALOG.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -945,7 +946,7 @@ export function PlayerCardsHub() {
                   <div
                     className={`p-3 rounded-xl border text-[11px] ${
                       tradeValidation.fair
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-[#00A844] dark:text-[#00E676]'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-[#E11D48] dark:text-[#E11D48]'
                         : 'bg-rose-500/10 border-rose-500/30 text-rose-500'
                     }`}
                   >
@@ -955,7 +956,7 @@ export function PlayerCardsHub() {
                 <button
                   type="submit"
                   disabled={!tradeValidation?.fair || friends.length === 0}
-                  className="w-full py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-[#E11D48] text-white font-bold disabled:opacity-50"
                 >
                   Send Fair Trade Offer
                 </button>
@@ -963,7 +964,7 @@ export function PlayerCardsHub() {
             )}
           </div>
 
-          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
               Active & Past Trades
             </h3>
@@ -978,7 +979,7 @@ export function PlayerCardsHub() {
                   return (
                     <div
                       key={tr.id}
-                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs"
+                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs"
                     >
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white">
@@ -994,7 +995,7 @@ export function PlayerCardsHub() {
                             <>
                               <button
                                 onClick={() => respondTrade(tr, 'accepted')}
-                                className="px-3 py-1.5 rounded-lg bg-[#00E676] text-[#060B16] font-bold"
+                                className="px-3 py-1.5 rounded-lg bg-[#E11D48] text-white font-bold"
                               >
                                 Accept Swap
                               </button>
@@ -1039,8 +1040,8 @@ export function PlayerCardsHub() {
               key={ach.title}
               className={`rounded-2xl p-5 border space-y-2 ${
                 ach.unlocked
-                  ? 'bg-emerald-500/10 border-[#00E676]/50'
-                  : 'bg-white dark:bg-[#0B1324] border-slate-200 dark:border-slate-800 opacity-65'
+                  ? 'bg-emerald-500/10 border-[#E11D48]/50'
+                  : 'bg-white dark:bg-[#0F1219] border-slate-200 dark:border-white/10 opacity-65'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -1048,7 +1049,7 @@ export function PlayerCardsHub() {
                   {ach.title}
                 </span>
                 {ach.unlocked ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#00E676]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#E11D48]" />
                 ) : (
                   <UserCheck className="w-5 h-5 text-slate-400" />
                 )}
@@ -1062,7 +1063,7 @@ export function PlayerCardsHub() {
       {/* Card Detail Modal */}
       {inspectCard && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-[#0B1324] border border-slate-800 p-6 text-white space-y-4">
+          <div className="w-full max-w-md rounded-3xl bg-[#0F1219] border border-slate-800 p-6 text-white space-y-4">
             <PlayerCardVisual card={inspectCard} count={cardCounts[inspectCard.id] || 0} />
             <p className="text-xs text-slate-300 leading-relaxed">{inspectCard.summary}</p>
             <div className="flex gap-2">
@@ -1073,7 +1074,7 @@ export function PlayerCardsHub() {
                   setSelectedPlayerKey(key);
                   setActiveTab('players');
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs"
               >
                 Open Real Player Profile
               </button>

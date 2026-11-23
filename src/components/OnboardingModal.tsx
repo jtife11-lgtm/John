@@ -60,8 +60,8 @@ export function OnboardingModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl max-h-[90vh] rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-2xl">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div className="w-full max-w-3xl max-h-[90vh] rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden shadow-2xl">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
           <div>
             <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
               Personalize Your Football Universe
@@ -94,8 +94,8 @@ export function OnboardingModal() {
                     onClick={() => toggleItem('favoriteLeagues', lg.id, 15)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
                       active
-                        ? 'bg-[#00E676] text-[#060B16] border-[#00E676]'
-                        : 'bg-slate-50 dark:bg-[#060B16] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                        ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                        : 'bg-slate-50 dark:bg-[#07090F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-400'
                     }`}
                   >
                     {active && <Check className="w-3.5 h-3.5" />}
@@ -121,8 +121,8 @@ export function OnboardingModal() {
                     onClick={() => toggleItem('favoriteTeams', club.name, 20)}
                     className={`px-3 py-2.5 rounded-xl text-left text-xs font-semibold border transition flex items-center justify-between gap-2 ${
                       active
-                        ? 'bg-[#00E676]/15 text-[#00A844] dark:text-[#00E676] border-[#00E676]'
-                        : 'bg-slate-50 dark:bg-[#060B16] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-500'
+                        ? 'bg-[#E11D48]/15 text-[#E11D48] dark:text-[#E11D48] border-[#E11D48]'
+                        : 'bg-slate-50 dark:bg-[#07090F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-500'
                     }`}
                   >
                     <span className="truncate">{club.name}</span>
@@ -151,8 +151,8 @@ export function OnboardingModal() {
                     onClick={() => toggleItem('favoriteNationalTeams', nt, 10)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
                       active
-                        ? 'bg-[#00E676] text-[#060B16] border-[#00E676] font-semibold'
-                        : 'bg-slate-50 dark:bg-[#060B16] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                        ? 'bg-[#E11D48] text-white border-[#E11D48] font-semibold'
+                        : 'bg-slate-50 dark:bg-[#07090F] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
                     }`}
                   >
                     {nt}
@@ -177,8 +177,8 @@ export function OnboardingModal() {
                     onClick={() => toggleItem('favoritePlayers', pl, 20)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
                       active
-                        ? 'bg-[#00E676] text-[#060B16] border-[#00E676] font-semibold'
-                        : 'bg-slate-50 dark:bg-[#060B16] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                        ? 'bg-[#E11D48] text-white border-[#E11D48] font-semibold'
+                        : 'bg-slate-50 dark:bg-[#07090F] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
                     }`}
                   >
                     {pl}
@@ -197,7 +197,7 @@ export function OnboardingModal() {
                 value={prefs.favoriteCountry}
                 onChange={(e) => setPrefs({ ...prefs, favoriteCountry: e.target.value })}
                 placeholder="e.g. Lebanon"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
               />
             </div>
             <div>
@@ -207,7 +207,7 @@ export function OnboardingModal() {
                 value={prefs.favoriteCity}
                 onChange={(e) => setPrefs({ ...prefs, favoriteCity: e.target.value })}
                 placeholder="e.g. Beirut"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
               />
             </div>
             <div>
@@ -215,7 +215,7 @@ export function OnboardingModal() {
               <select
                 value={prefs.favoritePosition}
                 onChange={(e) => setPrefs({ ...prefs, favoritePosition: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
               >
                 {POSITIONS_CATALOG.map((pos) => (
                   <option key={pos} value={pos}>
@@ -227,7 +227,7 @@ export function OnboardingModal() {
           </section>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={() => setShowOnboarding(false)}
@@ -239,7 +239,7 @@ export function OnboardingModal() {
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-6 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm hover:brightness-105 transition"
+            className="px-6 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:brightness-105 transition"
           >
             {saving ? 'Saving...' : 'Save Football Profile'}
           </button>

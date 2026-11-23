@@ -57,7 +57,7 @@ export function PlayerCardVisual({
       onClick={onClick}
       className={`group relative rounded-2xl border-2 bg-gradient-to-b ${style.gradient} ${style.border} ${
         style.glow
-      } ${selected ? 'ring-2 ring-[#00E676] scale-[1.02]' : ''} ${
+      } ${selected ? 'ring-2 ring-[#E11D48] scale-[1.02]' : ''} ${
         onClick ? 'cursor-pointer hover:-translate-y-1 transition-all duration-300' : ''
       } overflow-hidden text-white select-none ${compact ? 'p-3 w-52' : 'p-4'}`}
     >
@@ -74,7 +74,7 @@ export function PlayerCardVisual({
           <div className="font-mono-tabular text-2xl sm:text-3xl font-black tracking-tight text-white">
             {card.overall}
           </div>
-          <div className="text-[10px] font-extrabold tracking-wider text-[#00E676] mt-0.5">
+          <div className="text-[10px] font-extrabold tracking-wider text-[#E11D48] mt-0.5">
             {card.position}
           </div>
           <div className="text-[10px] text-slate-400 font-mono-tabular mt-0.5">

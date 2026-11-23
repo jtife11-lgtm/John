@@ -90,10 +90,10 @@ export function PlayerProfiles() {
   return (
     <div className="space-y-6">
       {/* Header & Search */}
-      <div className="rounded-3xl bg-[#0B1324] border border-slate-800 text-white p-6 sm:p-8 space-y-5">
+      <div className="rounded-3xl bg-[#0F1219] border border-slate-800 text-white p-6 sm:p-8 space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold text-[#00E676] tracking-wider">STR PLAYER PROFILES</p>
+            <p className="text-xs font-bold text-[#E11D48] tracking-wider">STR PLAYER PROFILES</p>
             <h1 className="font-display text-3xl sm:text-4xl font-extrabold">
               Global Footballer Encyclopedia & Career Telemetry
             </h1>
@@ -109,13 +109,13 @@ export function PlayerProfiles() {
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
                 placeholder="Search any footballer (e.g., Saka, Rodri, Zidane)..."
-                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-[#060B16] border border-slate-700 text-sm text-white focus:outline-none focus:border-[#00E676]"
+                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-[#07090F] border border-slate-700 text-sm text-white focus:outline-none focus:border-[#E11D48]"
               />
             </div>
             <button
               type="submit"
               disabled={searching}
-              className="px-4 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs shrink-0"
             >
               {searching ? 'Searching...' : 'Search'}
             </button>
@@ -130,8 +130,8 @@ export function PlayerProfiles() {
               onClick={() => loadPlayerProfile(name)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
                 profile?.name.toLowerCase().includes(name.toLowerCase().split(' ')[1] || name.toLowerCase())
-                  ? 'bg-[#00E676] text-[#060B16] border-[#00E676]'
-                  : 'bg-[#060B16]/80 border-slate-700 text-slate-300 hover:border-[#00E676]'
+                  ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                  : 'bg-[#07090F]/80 border-slate-700 text-slate-300 hover:border-[#E11D48]'
               }`}
             >
               {name}
@@ -146,7 +146,7 @@ export function PlayerProfiles() {
               <button
                 key={p.id}
                 onClick={() => loadPlayerProfile(p.id)}
-                className="p-2.5 rounded-xl bg-[#060B16] border border-slate-700 hover:border-[#00E676] flex items-center gap-3 text-left transition"
+                className="p-2.5 rounded-xl bg-[#07090F] border border-slate-700 hover:border-[#E11D48] flex items-center gap-3 text-left transition"
               >
                 {p.photo ? (
                   <img
@@ -174,8 +174,8 @@ export function PlayerProfiles() {
 
       {/* Loading / Error */}
       {loadingProfile && (
-        <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-10 flex items-center justify-center gap-3 text-sm text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-[#00E676]" />
+        <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-10 flex items-center justify-center gap-3 text-sm text-slate-500">
+          <Loader2 className="w-5 h-5 animate-spin text-[#E11D48]" />
           Loading verified player profile...
         </div>
       )}
@@ -191,8 +191,8 @@ export function PlayerProfiles() {
         <div className="grid lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 space-y-6">
             {/* Hero Identity Card */}
-            <div className="rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 flex flex-col sm:flex-row items-center gap-6">
-              <div className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+            <div className="rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 flex flex-col sm:flex-row items-center gap-6">
+              <div className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-center overflow-hidden shrink-0">
                 {profile.photo ? (
                   <img
                     src={profile.photo}
@@ -207,7 +207,7 @@ export function PlayerProfiles() {
 
               <div className="flex-1 space-y-2 text-center sm:text-left">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <span className="text-xs font-bold text-[#00A844] dark:text-[#00E676] flex items-center gap-1">
+                  <span className="text-xs font-bold text-[#E11D48] dark:text-[#E11D48] flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     {profile.source}
                   </span>
@@ -215,7 +215,7 @@ export function PlayerProfiles() {
                 <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
                   {profile.name}{' '}
                   {profile.shirtNumber && (
-                    <span className="text-[#00E676] font-mono-tabular">#{profile.shirtNumber}</span>
+                    <span className="text-[#E11D48] font-mono-tabular">#{profile.shirtNumber}</span>
                   )}
                 </h2>
                 <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -227,7 +227,7 @@ export function PlayerProfiles() {
                   {profile.verifiedMetrics.slice(0, 8).map((m) => (
                     <div
                       key={m.label}
-                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800"
+                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10"
                     >
                       <p className="text-[10px] text-slate-500">{m.label}</p>
                       <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{m.value}</p>
@@ -239,7 +239,7 @@ export function PlayerProfiles() {
 
             {/* Bio */}
             {profile.description && (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-2">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-2">
                 <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
                   Biography & Profile Overview
                 </h3>
@@ -250,9 +250,9 @@ export function PlayerProfiles() {
             )}
 
             {/* Career History */}
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-4">
               <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-[#00E676]" />
+                <Briefcase className="w-5 h-5 text-[#E11D48]" />
                 Club & Career Timeline
               </h3>
               {profile.careerHistory.length === 0 ? (
@@ -264,7 +264,7 @@ export function PlayerProfiles() {
                   {profile.careerHistory.map((club, i) => (
                     <div
                       key={`${club.team}-${i}`}
-                      className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center gap-3"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center gap-3"
                     >
                       {club.badge ? (
                         <img
@@ -291,9 +291,9 @@ export function PlayerProfiles() {
             </div>
 
             {/* Honours & Milestones */}
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-6 space-y-4">
               <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-[#00E676]" />
+                <Award className="w-5 h-5 text-[#E11D48]" />
                 Career Achievements & Honours
               </h3>
               {profile.honours.length === 0 && profile.milestones.length === 0 ? (
@@ -305,10 +305,10 @@ export function PlayerProfiles() {
                   {profile.honours.map((h, i) => (
                     <div
                       key={`${h.trophy}-${i}`}
-                      className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between gap-2"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs flex items-center justify-between gap-2"
                     >
                       <span className="font-semibold text-slate-900 dark:text-white truncate">{h.trophy}</span>
-                      <span className="font-mono-tabular text-[#00A844] dark:text-[#00E676] font-bold shrink-0">
+                      <span className="font-mono-tabular text-[#E11D48] dark:text-[#E11D48] font-bold shrink-0">
                         {h.season}
                       </span>
                     </div>
@@ -316,7 +316,7 @@ export function PlayerProfiles() {
                   {profile.milestones.map((m, i) => (
                     <div
                       key={`${m.title}-${i}`}
-                      className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between gap-2"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs flex items-center justify-between gap-2"
                     >
                       <span className="text-slate-700 dark:text-slate-200 truncate">{m.title}</span>
                       <span className="font-mono-tabular text-slate-400 shrink-0">{m.season}</span>
@@ -325,7 +325,7 @@ export function PlayerProfiles() {
                 </div>
               )}
 
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-[#060B16] text-[11px] text-slate-500">
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-[#07090F] text-[11px] text-slate-500">
                 Data Transparency: {profile.unavailableMetrics.join(' ')}
               </div>
             </div>
@@ -334,15 +334,15 @@ export function PlayerProfiles() {
           {/* Right Rail: Linked STR Player Card & SVG Attribute Chart */}
           <div className="lg:col-span-4 space-y-5">
             {linkedCard ? (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-[#00E676]" />
+                    <Sparkles className="w-5 h-5 text-[#E11D48]" />
                     Linked STR Card
                   </h3>
                   <button
                     onClick={() => setActiveTab('cards')}
-                    className="text-xs font-bold text-[#00A844] dark:text-[#00E676] hover:underline"
+                    className="text-xs font-bold text-[#E11D48] dark:text-[#E11D48] hover:underline"
                   >
                     Open Cards Hub
                   </button>
@@ -353,10 +353,10 @@ export function PlayerProfiles() {
                 {/* SVG Performance Attribute Chart */}
                 <div className="space-y-2 pt-2">
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                    <BarChart3 className="w-4 h-4 text-[#00E676]" />
+                    <BarChart3 className="w-4 h-4 text-[#E11D48]" />
                     Game Attribute Profile (Game Ratings)
                   </p>
-                  <svg viewBox="0 0 280 130" className="w-full rounded-xl bg-[#060B16] p-2 border border-slate-800">
+                  <svg viewBox="0 0 280 130" className="w-full rounded-xl bg-[#07090F] p-2 border border-slate-800">
                     {[
                       { k: 'PAC', v: linkedCard.stats.pace },
                       { k: 'SHO', v: linkedCard.stats.shooting },
@@ -373,7 +373,7 @@ export function PlayerProfiles() {
                             {row.k}
                           </text>
                           <rect x="44" y={y + 2} width="190" height="10" rx="5" fill="#1e293b" />
-                          <rect x="44" y={y + 2} width={barW} height="10" rx="5" fill="#00E676" />
+                          <rect x="44" y={y + 2} width={barW} height="10" rx="5" fill="#E11D48" />
                           <text x="242" y={y + 11} fill="#ffffff" fontSize="10" fontWeight="bold">
                             {row.v}
                           </text>
@@ -384,7 +384,7 @@ export function PlayerProfiles() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-2">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-2">
                 <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
                   STR Player Cards Link
                 </h3>
@@ -393,7 +393,7 @@ export function PlayerProfiles() {
                 </p>
                 <button
                   onClick={() => setActiveTab('cards')}
-                  className="w-full py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs"
+                  className="w-full py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs"
                 >
                   Browse STR Player Cards
                 </button>

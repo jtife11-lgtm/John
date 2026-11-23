@@ -4,7 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { AuthModal } from './components/AuthModal';
 import { OnboardingModal } from './components/OnboardingModal';
-import { TopNavbar, BottomNav, QuickCommunityFab } from './components/Navigation';
+import { TopNavbar, BottomNav } from './components/Navigation';
 import { HomeFeed } from './components/HomeFeed';
 import { ScoresCenter } from './components/ScoresCenter';
 import { MatchDetailModal } from './components/MatchDetailModal';
@@ -20,20 +20,21 @@ import { ExtraFeatures } from './components/ExtraFeatures';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { PlayerCardsHub } from './components/PlayerCardsHub';
 import { PlayerProfiles } from './components/PlayerProfiles';
+import { MatchSimulator } from './components/MatchSimulator';
 
 function StrScoresShell() {
   const { authReady, hasEnteredApp, user, activeTab } = useApp();
 
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-[#060B16] text-white flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-[#07090F] text-white flex flex-col items-center justify-center gap-4">
         <img
           src="/src/assets/images/str_scores_logo_1795349596176.jpg"
           alt="STR SCORES"
           referrerPolicy="no-referrer"
-          className="w-16 h-16 rounded-2xl object-cover border border-[#00E676]/40"
+          className="w-16 h-16 rounded-2xl object-cover border-2 border-[#E11D48]/60 shadow-lg shadow-[#E11D48]/20"
         />
-        <p className="font-display text-2xl font-bold tracking-wide">STR SCORES</p>
+        <p className="font-display text-2xl font-bold tracking-wider">STR SCORES</p>
       </div>
     );
   }
@@ -45,12 +46,13 @@ function StrScoresShell() {
       {showWelcome ? (
         <WelcomeScreen />
       ) : (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#060B16] text-slate-900 dark:text-slate-100 pb-24 md:pb-12">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#07090F] text-slate-900 dark:text-slate-100 pb-24 md:pb-12">
           <TopNavbar />
 
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 animate-fadeIn">
             {activeTab === 'home' && <HomeFeed />}
             {activeTab === 'scores' && <ScoresCenter />}
+            {activeTab === 'simulator' && <MatchSimulator />}
             {activeTab === 'games' && <GamesHub />}
             {activeTab === 'cards' && <PlayerCardsHub />}
             {activeTab === 'players' && <PlayerProfiles />}
@@ -65,7 +67,6 @@ function StrScoresShell() {
             {activeTab === 'admin' && <AdminDashboard />}
           </main>
 
-          <QuickCommunityFab />
           <BottomNav />
         </div>
       )}

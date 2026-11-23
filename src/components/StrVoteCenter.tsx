@@ -74,10 +74,6 @@ export function StrVoteCenter() {
       pushToast('Sign in to cast a verified fan vote (prevents duplicate voting).', 'info');
       return;
     }
-    if (!user.emailVerified) {
-      pushToast('Verify your email to participate in STR VOTE.', 'info');
-      return;
-    }
     if (userVotes[poll.id] !== undefined) {
       pushToast('You have already voted in this poll.', 'info');
       return;
@@ -108,8 +104,10 @@ export function StrVoteCenter() {
 
   const createPoll = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.emailVerified) {
-      pushToast('Verified account required to create community polls.', 'info');
+    if (!user) {
+      setAuthModalMode('signin');
+      setShowAuthModal(true);
+      pushToast('Sign in to create community polls.', 'info');
       return;
     }
     const opts = newOptionsText
@@ -148,7 +146,7 @@ export function StrVoteCenter() {
   };
 
   const seedStarterPolls = async () => {
-    if (!user || !user.emailVerified) {
+    if (!user) {
       setAuthModalMode('signin');
       setShowAuthModal(true);
       return;
@@ -196,7 +194,7 @@ export function StrVoteCenter() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <Vote className="w-7 h-7 text-[#00E676]" />
+            <Vote className="w-7 h-7 text-[#E11D48]" />
             STR VOTE — Fan Polls
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">{t(lang, 'fanOpinionNote')}</p>
@@ -211,7 +209,7 @@ export function StrVoteCenter() {
               setShowCreate(!showCreate);
             }
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs hover:brightness-105 transition self-start"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs hover:brightness-105 transition self-start"
         >
           <Plus className="w-4 h-4" />
           Create Community Poll
@@ -226,8 +224,8 @@ export function StrVoteCenter() {
             onClick={() => setCategory(c.id)}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold border whitespace-nowrap transition ${
               category === c.id
-                ? 'bg-[#00E676] text-[#060B16] border-[#00E676]'
-                : 'bg-white dark:bg-[#0B1324] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                : 'bg-white dark:bg-[#0F1219] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
             }`}
           >
             {c.label}
@@ -238,7 +236,7 @@ export function StrVoteCenter() {
       {showCreate && (
         <form
           onSubmit={createPoll}
-          className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4 max-w-xl"
+          className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4 max-w-xl"
         >
           <h2 className="font-display text-xl font-bold">New Community Fan Poll</h2>
           <input
@@ -247,12 +245,12 @@ export function StrVoteCenter() {
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Poll question (e.g., Who wins the Champions League?)"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
           />
           <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
           >
             {POLL_CATEGORIES.filter((c) => c.id !== 'all').map((c) => (
               <option key={c.id} value={c.id}>
@@ -265,13 +263,13 @@ export function StrVoteCenter() {
             value={newOptionsText}
             onChange={(e) => setNewOptionsText(e.target.value)}
             placeholder="One option per line (2–10 options)"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
           />
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={creating}
-              className="px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs"
             >
               {creating ? 'Publishing...' : 'Publish Poll'}
             </button>
@@ -287,13 +285,13 @@ export function StrVoteCenter() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-10 text-center space-y-3">
+        <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-10 text-center space-y-3">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             No live fan polls in this category yet.
           </p>
           <button
             onClick={seedStarterPolls}
-            className="px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+            className="px-5 py-2.5 rounded-xl bg-[#E11D48] text-white text-xs font-bold"
           >
             Launch Matchday Fan Polls
           </button>
@@ -308,7 +306,7 @@ export function StrVoteCenter() {
             return (
               <div
                 key={poll.id}
-                className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4"
+                className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
@@ -325,7 +323,7 @@ export function StrVoteCenter() {
                       pushToast('Poll invite copied!', 'success');
                     }}
                     title="Share poll"
-                    className="p-2 rounded-lg text-slate-400 hover:text-[#00E676]"
+                    className="p-2 rounded-lg text-slate-400 hover:text-[#E11D48]"
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
@@ -342,17 +340,17 @@ export function StrVoteCenter() {
                         onClick={() => castVote(poll, idx)}
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition ${
                           isMine
-                            ? 'border-[#00E676]'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                            ? 'border-[#E11D48]'
+                            : 'border-slate-200 dark:border-white/10 hover:border-slate-400'
                         }`}
                       >
                         <div
-                          className="absolute inset-y-0 left-0 bg-[#00E676]/15 transition-all"
+                          className="absolute inset-y-0 left-0 bg-[#E11D48]/15 transition-all"
                           style={{ width: `${pct}%` }}
                         />
                         <div className="relative z-10 flex items-center justify-between text-xs font-semibold">
                           <span className="flex items-center gap-1.5">
-                            {isMine && <Check className="w-3.5 h-3.5 text-[#00E676]" />}
+                            {isMine && <Check className="w-3.5 h-3.5 text-[#E11D48]" />}
                             {opt}
                           </span>
                           <span className="font-mono-tabular">

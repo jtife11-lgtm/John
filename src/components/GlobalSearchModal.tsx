@@ -37,9 +37,9 @@ export function GlobalSearchModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-4 pt-16">
-      <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
-          <Search className="w-5 h-5 text-[#00E676] shrink-0" />
+      <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-white/10 flex items-center gap-3">
+          <Search className="w-5 h-5 text-[#E11D48] shrink-0" />
           <input
             type="text"
             autoFocus
@@ -59,7 +59,7 @@ export function GlobalSearchModal() {
         <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
           {loading && (
             <div className="py-6 flex items-center justify-center gap-2 text-xs text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin text-[#00E676]" />
+              <Loader2 className="w-4 h-4 animate-spin text-[#E11D48]" />
               Searching football database...
             </div>
           )}
@@ -79,7 +79,7 @@ export function GlobalSearchModal() {
                       setActiveTab('stats');
                     }
                   }}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] cursor-pointer flex items-center gap-3"
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] cursor-pointer flex items-center gap-3"
                 >
                   {r.imageUrl && (
                     <img
@@ -110,9 +110,9 @@ export function GlobalSearchModal() {
                     setShowSearchModal(false);
                     setActiveTab('extra');
                   }}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 cursor-pointer"
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 cursor-pointer"
                 >
-                  <p className="text-xs font-bold text-[#00E676]">{g.term}</p>
+                  <p className="text-xs font-bold text-[#E11D48]">{g.term}</p>
                   <p className="text-xs text-slate-500">{g.definition}</p>
                 </div>
               ))}

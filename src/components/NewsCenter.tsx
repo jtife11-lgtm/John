@@ -124,10 +124,6 @@ export function NewsCenter() {
       pushToast('Sign in to bookmark articles to your profile.', 'info');
       return;
     }
-    if (!user.emailVerified) {
-      pushToast('Verify your email to save articles.', 'info');
-      return;
-    }
     const existing = savedArticles.find((s) => s.articleId === art.id);
     if (existing) {
       await deleteDoc(doc(db, 'savedArticles', existing.docId));
@@ -200,7 +196,7 @@ export function NewsCenter() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 rounded-xl p-1">
+        <div className="flex items-center gap-1.5 bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 rounded-xl p-1">
           {[
             { id: 'football' as const, label: 'Football News', icon: Newspaper },
             { id: 'gaming' as const, label: 'Gaming News', icon: Gamepad2 },
@@ -213,7 +209,7 @@ export function NewsCenter() {
                 onClick={() => setSection(s.id)}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
                   section === s.id
-                    ? 'bg-[#00E676] text-[#060B16]'
+                    ? 'bg-[#E11D48] text-white'
                     : 'text-slate-600 dark:text-slate-300'
                 }`}
               >
@@ -235,8 +231,8 @@ export function NewsCenter() {
                 onClick={() => setFootballCat(cat)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold border whitespace-nowrap transition ${
                   footballCat === cat
-                    ? 'bg-[#00E676] text-[#060B16] border-[#00E676]'
-                    : 'bg-white dark:bg-[#0B1324] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                    ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                    : 'bg-white dark:bg-[#0F1219] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
                 }`}
               >
                 {cat === 'all' ? 'All Football' : cat === 'Lebanese' ? 'Lebanese Football' : cat}
@@ -261,8 +257,8 @@ export function NewsCenter() {
                 onClick={() => setGamingFilter(g.id)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold border whitespace-nowrap transition ${
                   gamingFilter === g.id
-                    ? 'bg-[#00E676] text-[#060B16] border-[#00E676]'
-                    : 'bg-white dark:bg-[#0B1324] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                    ? 'bg-[#E11D48] text-white border-[#E11D48]'
+                    : 'bg-white dark:bg-[#0F1219] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
                 }`}
               >
                 {g.label}
@@ -278,14 +274,14 @@ export function NewsCenter() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search headlines..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-xs focus:outline-none focus:border-[#00E676]"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-xs focus:outline-none focus:border-[#E11D48]"
           />
         </div>
       </div>
 
       {loading ? (
         <div className="py-16 flex flex-col items-center gap-3 text-slate-500">
-          <Loader2 className="w-7 h-7 animate-spin text-[#00E676]" />
+          <Loader2 className="w-7 h-7 animate-spin text-[#E11D48]" />
           <p className="text-sm">Loading verified headlines...</p>
         </div>
       ) : error ? (
@@ -293,7 +289,7 @@ export function NewsCenter() {
           {error}
         </div>
       ) : displayed.length === 0 ? (
-        <div className="p-10 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500">
+        <div className="p-10 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-center text-sm text-slate-500">
           No articles matched your filter.
         </div>
       ) : (
@@ -304,7 +300,7 @@ export function NewsCenter() {
               <article
                 key={art.id}
                 onClick={() => setActiveArticle(art)}
-                className="group cursor-pointer rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 hover:border-[#00E676] overflow-hidden flex flex-col justify-between transition"
+                className="group cursor-pointer rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 hover:border-[#E11D48] overflow-hidden flex flex-col justify-between transition"
               >
                 <div>
                   <div className="h-44 bg-slate-900 overflow-hidden">
@@ -334,8 +330,8 @@ export function NewsCenter() {
                   </div>
                 </div>
 
-                <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-[#00A844] dark:text-[#00E676]">
+                <div className="px-4 py-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-[#E11D48] dark:text-[#E11D48]">
                     Read Story
                   </span>
                   <div className="flex items-center gap-1">
@@ -343,10 +339,10 @@ export function NewsCenter() {
                       type="button"
                       onClick={(e) => toggleSaveArticle(art, e)}
                       aria-label="Save article"
-                      className="p-2 rounded-lg text-slate-500 hover:text-[#00E676]"
+                      className="p-2 rounded-lg text-slate-500 hover:text-[#E11D48]"
                     >
                       {saved ? (
-                        <BookmarkCheck className="w-4 h-4 text-[#00E676]" />
+                        <BookmarkCheck className="w-4 h-4 text-[#E11D48]" />
                       ) : (
                         <Bookmark className="w-4 h-4" />
                       )}
@@ -355,7 +351,7 @@ export function NewsCenter() {
                       type="button"
                       onClick={(e) => shareArticle(art, e)}
                       aria-label="Share article"
-                      className="p-2 rounded-lg text-slate-500 hover:text-[#00E676]"
+                      className="p-2 rounded-lg text-slate-500 hover:text-[#E11D48]"
                     >
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -370,7 +366,7 @@ export function NewsCenter() {
       {/* Article Reader Modal */}
       {activeArticle && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xl">
+          <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 overflow-hidden shadow-2xl">
             <div className="relative h-56 bg-slate-900">
               <img
                 src={activeArticle.imageUrl || FALLBACK_IMG}
@@ -406,7 +402,7 @@ export function NewsCenter() {
                     href={activeArticle.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs hover:brightness-105"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-xs hover:brightness-105"
                   >
                     Read Original Article on {activeArticle.source}
                     <ExternalLink className="w-4 h-4" />

@@ -127,10 +127,6 @@ export function FantasyPredictions() {
       setShowAuthModal(true);
       return;
     }
-    if (!user.emailVerified) {
-      pushToast('Please verify your email to save your Fantasy XI.', 'info');
-      return;
-    }
     setSaving(true);
     try {
       await setDoc(
@@ -162,10 +158,6 @@ export function FantasyPredictions() {
       setShowAuthModal(true);
       return;
     }
-    if (!user.emailVerified) {
-      pushToast('Verify your email to lock in match predictions.', 'info');
-      return;
-    }
     const pred = predictions[match.id] || { home: 1, away: 1 };
     const docId = `${user.uid.slice(0, 12)}_${match.id.replace(/[^a-zA-Z0-9_-]/g, '')}`.slice(0, 100);
     try {
@@ -188,18 +180,18 @@ export function FantasyPredictions() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <Trophy className="w-7 h-7 text-[#00E676]" />
+            <Trophy className="w-7 h-7 text-[#E11D48]" />
             STR Fantasy & Predictions
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">{t(lang, 'noGamblingNote')}</p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 rounded-xl p-1">
+        <div className="flex items-center gap-1.5 bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 rounded-xl p-1">
           <button
             onClick={() => setTab('fantasy')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
               tab === 'fantasy'
-                ? 'bg-[#00E676] text-[#060B16]'
+                ? 'bg-[#E11D48] text-white'
                 : 'text-slate-600 dark:text-slate-300'
             }`}
           >
@@ -209,7 +201,7 @@ export function FantasyPredictions() {
             onClick={() => setTab('predictions')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
               tab === 'predictions'
-                ? 'bg-[#00E676] text-[#060B16]'
+                ? 'bg-[#E11D48] text-white'
                 : 'text-slate-600 dark:text-slate-300'
             }`}
           >
@@ -222,7 +214,7 @@ export function FantasyPredictions() {
         <div className="grid lg:grid-cols-12 gap-6">
           {/* Left: Squad Builder & Settings */}
           <div className="lg:col-span-8 space-y-5">
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4">
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1">
@@ -232,7 +224,7 @@ export function FantasyPredictions() {
                     type="text"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm font-semibold"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm font-semibold"
                   />
                 </div>
                 <div>
@@ -242,7 +234,7 @@ export function FantasyPredictions() {
                   <select
                     value={formation}
                     onChange={(e) => setFormation(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm font-semibold"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm font-semibold"
                   >
                     <option value="4-3-3">4-3-3</option>
                     <option value="4-4-2">4-4-2</option>
@@ -258,13 +250,13 @@ export function FantasyPredictions() {
                     value={leagueCode}
                     onChange={(e) => setLeagueCode(e.target.value.toUpperCase())}
                     placeholder="STR-GLOBAL"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm font-mono-tabular font-semibold"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm font-mono-tabular font-semibold"
                   />
                 </div>
               </div>
 
               {/* Squad Summary Strip */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-white/10 text-xs">
                 <div className="flex flex-wrap items-center gap-4 font-mono-tabular">
                   <span>
                     Players: <strong>{selectedIds.length}/11</strong>
@@ -272,14 +264,14 @@ export function FantasyPredictions() {
                   <span>
                     Budget: <strong>{totalCost.toFixed(1)}M / 105.0M</strong>
                   </span>
-                  <span className="text-[#00A844] dark:text-[#00E676] font-bold">
+                  <span className="text-[#E11D48] dark:text-[#E11D48] font-bold">
                     Season Form Score: {projectedPoints} pts
                   </span>
                 </div>
                 <button
                   onClick={saveSquad}
                   disabled={saving}
-                  className="px-5 py-2 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-xs hover:brightness-105 transition"
+                  className="px-5 py-2 rounded-xl bg-[#E11D48] text-white font-bold text-xs hover:brightness-105 transition"
                 >
                   {saving ? 'Saving...' : 'Save Fantasy Squad'}
                 </button>
@@ -287,7 +279,7 @@ export function FantasyPredictions() {
             </div>
 
             {/* Player Pool Selection */}
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">
                 Select Real Players ({FANTASY_POOL.length} Pool)
               </h2>
@@ -301,8 +293,8 @@ export function FantasyPredictions() {
                       onClick={() => togglePlayer(p)}
                       className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between gap-2 transition ${
                         picked
-                          ? 'bg-[#00E676]/10 border-[#00E676]'
-                          : 'bg-slate-50 dark:bg-[#060B16] border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                          ? 'bg-[#E11D48]/10 border-[#E11D48]'
+                          : 'bg-slate-50 dark:bg-[#07090F] border-slate-200 dark:border-white/10 hover:border-slate-400'
                       }`}
                     >
                       <div className="min-w-0">
@@ -324,7 +316,7 @@ export function FantasyPredictions() {
                             title="Set Captain (2x points)"
                             className={`p-1.5 rounded-lg text-[10px] font-bold ${
                               isCap
-                                ? 'bg-[#00E676] text-[#060B16]'
+                                ? 'bg-[#E11D48] text-white'
                                 : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
                             }`}
                           >
@@ -334,7 +326,7 @@ export function FantasyPredictions() {
                         <span className="font-mono-tabular text-xs font-bold">
                           {p.price.toFixed(1)}M
                         </span>
-                        {picked && <Check className="w-4 h-4 text-[#00E676]" />}
+                        {picked && <Check className="w-4 h-4 text-[#E11D48]" />}
                       </div>
                     </div>
                   );
@@ -345,9 +337,9 @@ export function FantasyPredictions() {
 
           {/* Right: Private League Standings */}
           <div className="lg:col-span-4 space-y-4">
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
               <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#00E676]" />
+                <Users className="w-5 h-5 text-[#E11D48]" />
                 League: {leagueCode || 'STR-GLOBAL'}
               </h3>
               <p className="text-xs text-slate-500">
@@ -364,7 +356,7 @@ export function FantasyPredictions() {
                       <span className="font-semibold">
                         #{idx + 1} {tm.teamName} ({tm.formation})
                       </span>
-                      <span className="font-mono-tabular font-bold text-[#00A844] dark:text-[#00E676]">
+                      <span className="font-mono-tabular font-bold text-[#E11D48] dark:text-[#E11D48]">
                         {tm.totalPoints} pts
                       </span>
                     </div>
@@ -373,8 +365,8 @@ export function FantasyPredictions() {
               )}
             </div>
 
-            <div className="rounded-2xl bg-slate-50 dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-4 text-xs text-slate-500 flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-[#00E676] shrink-0 mt-0.5" />
+            <div className="rounded-2xl bg-slate-50 dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-4 text-xs text-slate-500 flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-[#E11D48] shrink-0 mt-0.5" />
               <span>{t(lang, 'noGamblingNote')}</span>
             </div>
           </div>
@@ -382,7 +374,7 @@ export function FantasyPredictions() {
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {upcomingMatches.length === 0 ? (
-            <div className="md:col-span-2 p-8 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500">
+            <div className="md:col-span-2 p-8 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-center text-sm text-slate-500">
               No fixtures loaded right now for score predictions.
             </div>
           ) : (
@@ -395,7 +387,7 @@ export function FantasyPredictions() {
               return (
                 <div
                   key={m.id}
-                  className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-4 space-y-3"
+                  className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-4 space-y-3"
                 >
                   <div className="flex justify-between text-[11px] text-slate-500">
                     <span>{m.leagueName}</span>
@@ -415,7 +407,7 @@ export function FantasyPredictions() {
                             [m.id]: { ...val, home: Number(e.target.value) },
                           })
                         }
-                        className="w-12 py-1.5 text-center rounded-lg bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 font-mono-tabular text-sm font-bold"
+                        className="w-12 py-1.5 text-center rounded-lg bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 font-mono-tabular text-sm font-bold"
                       />
                       <span>:</span>
                       <input
@@ -429,14 +421,14 @@ export function FantasyPredictions() {
                             [m.id]: { ...val, away: Number(e.target.value) },
                           })
                         }
-                        className="w-12 py-1.5 text-center rounded-lg bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-700 font-mono-tabular text-sm font-bold"
+                        className="w-12 py-1.5 text-center rounded-lg bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-slate-700 font-mono-tabular text-sm font-bold"
                       />
                     </div>
                     <span className="text-xs font-bold truncate">{m.away.shortName}</span>
                   </div>
                   <button
                     onClick={() => submitPrediction(m)}
-                    className="w-full py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold hover:brightness-105 transition"
+                    className="w-full py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:brightness-105 transition"
                   >
                     {existing ? 'Update Prediction' : 'Lock Prediction (For Fun)'}
                   </button>

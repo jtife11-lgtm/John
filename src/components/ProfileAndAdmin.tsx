@@ -47,8 +47,8 @@ export function ProfileScreen() {
 
   if (!user) {
     return (
-      <div className="max-w-xl mx-auto rounded-3xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-8 text-center space-y-4">
-        <User className="w-10 h-10 text-[#00E676] mx-auto" />
+      <div className="max-w-xl mx-auto rounded-3xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-8 text-center space-y-4">
+        <User className="w-10 h-10 text-[#E11D48] mx-auto" />
         <h1 className="font-display text-3xl font-bold">Supporter Profile & Alerts</h1>
         <p className="text-sm text-slate-500">
           You are currently browsing as a Guest. Create a free account or sign in to save your profile, manage notification preferences, add friends, and unlock cloud sync.
@@ -59,7 +59,7 @@ export function ProfileScreen() {
               setAuthModalMode('signin');
               setShowAuthModal(true);
             }}
-            className="px-6 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm"
+            className="px-6 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-sm"
           >
             Sign In
           </button>
@@ -74,7 +74,7 @@ export function ProfileScreen() {
           </button>
           <button
             onClick={() => setShowOnboarding(true)}
-            className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-[#060B16] text-sm font-semibold"
+            className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-[#07090F] text-sm font-semibold"
           >
             Edit Guest Clubs
           </button>
@@ -170,7 +170,7 @@ export function ProfileScreen() {
           {isAdmin && (
             <button
               onClick={() => setActiveTab('admin')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold"
             >
               <Shield className="w-4 h-4" />
               Admin Dashboard
@@ -191,17 +191,17 @@ export function ProfileScreen() {
         <div className="lg:col-span-6 space-y-5">
           <form
             onSubmit={updateProfileInfo}
-            className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4"
+            className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4"
           >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-bold flex items-center gap-2">
-                <Settings className="w-5 h-5 text-[#00E676]" />
+                <Settings className="w-5 h-5 text-[#E11D48]" />
                 Edit Supporter Profile
               </h2>
               <button
                 type="button"
                 onClick={() => setShowOnboarding(true)}
-                className="text-xs font-semibold text-[#00A844] dark:text-[#00E676] hover:underline"
+                className="text-xs font-semibold text-[#E11D48] dark:text-[#E11D48] hover:underline"
               >
                 Edit Favorite Teams & Leagues
               </button>
@@ -212,7 +212,7 @@ export function ProfileScreen() {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
               />
             </div>
             <div>
@@ -221,13 +221,13 @@ export function ProfileScreen() {
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
               />
             </div>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+              className="px-5 py-2.5 rounded-xl bg-[#E11D48] text-white text-xs font-bold"
             >
               {saving ? 'Saving...' : 'Save Profile'}
             </button>
@@ -235,7 +235,7 @@ export function ProfileScreen() {
 
           <form
             onSubmit={handleChangePassword}
-            className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3"
+            className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3"
           >
             <h2 className="font-display text-xl font-bold">Security & Account</h2>
             <div className="flex gap-2">
@@ -244,7 +244,7 @@ export function ProfileScreen() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="New password (min 6 chars)"
-                className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs"
+                className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs"
               />
               <button
                 type="submit"
@@ -266,9 +266,9 @@ export function ProfileScreen() {
 
         {/* Notifications & Preferences */}
         <div className="lg:col-span-6 space-y-5">
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h2 className="font-display text-xl font-bold flex items-center gap-2">
-              <Bell className="w-5 h-5 text-[#00E676]" />
+              <Bell className="w-5 h-5 text-[#E11D48]" />
               Personalized Notification Preferences
             </h2>
             <div className="grid sm:grid-cols-2 gap-2.5 text-xs">
@@ -289,8 +289,8 @@ export function ProfileScreen() {
                     onClick={() => toggleNotifPref(pref.key, !enabled)}
                     className={`px-3.5 py-2.5 rounded-xl border flex items-center justify-between transition ${
                       enabled
-                        ? 'bg-[#00E676]/10 border-[#00E676] text-slate-900 dark:text-white'
-                        : 'bg-slate-50 dark:bg-[#060B16] border-slate-200 dark:border-slate-800 text-slate-500'
+                        ? 'bg-[#E11D48]/10 border-[#E11D48] text-slate-900 dark:text-white'
+                        : 'bg-slate-50 dark:bg-[#07090F] border-slate-200 dark:border-white/10 text-slate-500'
                     }`}
                   >
                     <span>{pref.label}</span>
@@ -301,7 +301,7 @@ export function ProfileScreen() {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h2 className="font-display text-xl font-bold">Notifications Inbox</h2>
             {notifications.length === 0 ? (
               <p className="text-xs text-slate-500">No unread notifications yet.</p>
@@ -316,7 +316,7 @@ export function ProfileScreen() {
                     {!n.read && (
                       <button
                         onClick={() => markNotificationRead(n.id)}
-                        className="p-1.5 rounded-lg text-[#00E676]"
+                        className="p-1.5 rounded-lg text-[#E11D48]"
                         title="Mark read"
                       >
                         <Check className="w-4 h-4" />
@@ -403,7 +403,7 @@ export function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-          <Shield className="w-7 h-7 text-[#00E676]" />
+          <Shield className="w-7 h-7 text-[#E11D48]" />
           STR SCORES Admin Console
         </h1>
         <p className="text-xs text-slate-500">
@@ -414,7 +414,7 @@ export function AdminDashboard() {
       <div className="grid lg:grid-cols-12 gap-6">
         <form
           onSubmit={publishEditorial}
-          className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3"
+          className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3"
         >
           <h2 className="font-display text-xl font-bold">Publish Editorial News</h2>
           <input
@@ -423,12 +423,12 @@ export function AdminDashboard() {
             value={newsTitle}
             onChange={(e) => setNewsTitle(e.target.value)}
             placeholder="Headline"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
           />
           <select
             value={newsCategory}
             onChange={(e) => setNewsCategory(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
           >
             {['Breaking', 'Transfers', 'Clubs', 'International', 'Lebanese', 'Gaming'].map((c) => (
               <option key={c} value={c}>
@@ -442,17 +442,17 @@ export function AdminDashboard() {
             value={newsSummary}
             onChange={(e) => setNewsSummary(e.target.value)}
             placeholder="Article summary..."
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-sm"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-sm"
           />
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-bold"
+            className="px-5 py-2.5 rounded-xl bg-[#E11D48] text-white text-xs font-bold"
           >
             Publish to Newsroom
           </button>
 
           {customNews.length > 0 && (
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="pt-3 border-t border-slate-200 dark:border-white/10 space-y-2">
               {customNews.map((cn) => (
                 <div key={cn.id} className="flex items-center justify-between text-xs">
                   <span className="truncate font-semibold">{cn.title}</span>
@@ -470,7 +470,7 @@ export function AdminDashboard() {
         </form>
 
         <div className="lg:col-span-7 space-y-5">
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h2 className="font-display text-xl font-bold">Moderation Reports ({reports.length})</h2>
             {reports.length === 0 ? (
               <p className="text-xs text-slate-500">No active moderation reports.</p>
@@ -479,7 +479,7 @@ export function AdminDashboard() {
                 {reports.map((rep) => (
                   <div
                     key={rep.id}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 text-xs"
                   >
                     <div>
                       <p className="font-bold">
@@ -491,7 +491,7 @@ export function AdminDashboard() {
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => resolveReport(rep.id, 'resolved')}
-                          className="px-2.5 py-1 rounded bg-[#00E676] text-[#060B16] font-bold"
+                          className="px-2.5 py-1 rounded bg-[#E11D48] text-white font-bold"
                         >
                           Resolve
                         </button>
@@ -509,7 +509,7 @@ export function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
             <h2 className="font-display text-xl font-bold">Supporter Accounts ({usersList.length})</h2>
             <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               {usersList.map((u) => (
@@ -517,7 +517,7 @@ export function AdminDashboard() {
                   <span>
                     <strong>{u.displayName}</strong> (@{u.username})
                   </span>
-                  <span className="font-mono-tabular text-[#00E676]">{u.points} pts</span>
+                  <span className="font-mono-tabular text-[#E11D48]">{u.points} pts</span>
                 </div>
               ))}
             </div>

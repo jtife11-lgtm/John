@@ -170,7 +170,7 @@
         "toUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "fromName": { "type": "string", "minLength": 1, "maxLength": 64 },
         "toName": { "type": "string", "minLength": 1, "maxLength": 64 },
-        "gameType": { "type": "string", "enum": ["penalty", "quiz", "higher_lower", "card_battle", "guess_player", "guess_club"] },
+        "gameType": { "type": "string", "enum": ["penalty", "quiz", "higher_lower", "card_battle", "guess_player", "guess_club", "free_kick", "trivia_blitz", "reflex_save"] },
         "status": { "type": "string", "enum": ["pending", "accepted", "completed", "declined"] },
         "fromScore": { "type": "integer" },
         "toScore": { "type": "integer" },
@@ -266,6 +266,8 @@
         "title": { "type": "string", "minLength": 1, "maxLength": 120 },
         "body": { "type": "string", "minLength": 1, "maxLength": 300 },
         "read": { "type": "boolean" },
+        "senderUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "roomId": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "type", "title", "body", "read", "createdAt"]
@@ -309,6 +311,43 @@
         "grantedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "grantedAt"]
+    },
+    "SimMatch": {
+      "title": "SimMatch",
+      "description": "Saved simulated match report and telemetry from STR Match Simulator",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mode": { "type": "string", "enum": ["quick", "ucl", "epl", "laliga", "world_cup", "tournament", "dream"] },
+        "competitionLabel": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "homeTeamId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "homeName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "awayTeamId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "awayName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "homeScore": { "type": "integer" },
+        "awayScore": { "type": "integer" },
+        "homePenScore": { "type": "integer" },
+        "awayPenScore": { "type": "integer" },
+        "wentToExtraTime": { "type": "boolean" },
+        "wentToPenalties": { "type": "boolean" },
+        "formationHome": { "type": "string", "enum": ["4-3-3", "4-2-3-1", "3-5-2", "4-4-2"] },
+        "formationAway": { "type": "string", "enum": ["4-3-3", "4-2-3-1", "3-5-2", "4-4-2"] },
+        "manOfTheMatch": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "motmRating": { "type": "string", "minLength": 1, "maxLength": 10 },
+        "summaryLine": { "type": "string", "minLength": 2, "maxLength": 300 },
+        "possessionHome": { "type": "integer" },
+        "shotsHome": { "type": "integer" },
+        "shotsAway": { "type": "integer" },
+        "keyEvents": { "type": "array", "description": "Up to 16 key match event summaries" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "mode", "competitionLabel", "homeTeamId", "homeName",
+        "awayTeamId", "awayName", "homeScore", "awayScore",
+        "wentToExtraTime", "wentToPenalties", "formationHome", "formationAway",
+        "manOfTheMatch", "motmRating", "summaryLine", "possessionHome",
+        "shotsHome", "shotsAway", "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -383,6 +422,10 @@
     "/customNews/{newsId}": {
       "schema": { "$ref": "#/entities/CustomNews" },
       "description": "Admin editorial announcements"
+    },
+    "/simMatches/{simId}": {
+      "schema": { "$ref": "#/entities/SimMatch" },
+      "description": "Saved simulated matches from STR Match Simulator"
     }
   }
 }

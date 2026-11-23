@@ -189,7 +189,7 @@ export function AiMatchCenter() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <Bot className="w-7 h-7 text-[#00E676]" />
+            <Bot className="w-7 h-7 text-[#E11D48]" />
             STR AI Match Analyst
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -197,17 +197,17 @@ export function AiMatchCenter() {
           </p>
         </div>
 
-        <div className="text-xs px-3.5 py-2 rounded-xl bg-[#00E676]/10 border border-[#00E676]/30 text-[#00A844] dark:text-[#00E676] font-medium">
+        <div className="text-xs px-3.5 py-2 rounded-xl bg-[#E11D48]/10 border border-[#E11D48]/30 text-[#E11D48] dark:text-[#E11D48] font-medium">
           {t(lang, 'aiDisclaimer')}
         </div>
       </div>
 
       {/* Match Telemetry Selector */}
-      <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+      <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#00E676]" />
+              <CheckCircle2 className="w-4 h-4 text-[#E11D48]" />
               Verified Match Telemetry Context
             </h2>
             <p className="text-xs text-slate-500">
@@ -221,7 +221,7 @@ export function AiMatchCenter() {
                 setSelectedMatchId(e.target.value);
                 setStructuredReport(null);
               }}
-              className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-xs font-medium max-w-xs"
+              className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-xs font-medium max-w-xs"
             >
               <option value="">General Football Q&A (No match attached)</option>
               {matches.map((m) => (
@@ -235,7 +235,7 @@ export function AiMatchCenter() {
               <button
                 disabled={reportLoading}
                 onClick={generateFullReport}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00E676] text-[#060B16] text-xs font-extrabold hover:brightness-105 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-extrabold hover:brightness-105 disabled:opacity-50"
               >
                 {reportLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
                 {reportLoading ? 'Analyzing...' : 'Generate Full Analyst Report'}
@@ -245,7 +245,7 @@ export function AiMatchCenter() {
         </div>
 
         {selectedMatch && (
-          <div className="rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
             <span className="font-semibold text-slate-900 dark:text-white">
               Real Feed Data: {selectedMatch.home.name} ({selectedMatch.home.score ?? '-'}) vs{' '}
               {selectedMatch.away.name} ({selectedMatch.away.score ?? '-'})
@@ -279,9 +279,9 @@ export function AiMatchCenter() {
               key={btn.label}
               disabled={loading}
               onClick={() => runAnalysis(btn.q, btn.mode)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-[#060B16] hover:border-[#00E676] border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-[#07090F] hover:border-[#E11D48] border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-800 dark:text-slate-200 transition disabled:opacity-50"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#00E676]" />
+              <Sparkles className="w-3.5 h-3.5 text-[#E11D48]" />
               {btn.label}
             </button>
           ))}
@@ -291,16 +291,16 @@ export function AiMatchCenter() {
       {/* Structured Full AI Match Report */}
       {structuredReport && (
         <div className="space-y-5">
-          <div className="rounded-2xl bg-[#0B1324] border border-[#00E676]/40 text-white p-6 space-y-3">
+          <div className="rounded-2xl bg-[#0F1219] border border-[#E11D48]/40 text-white p-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-2xl font-extrabold text-[#00E676] flex items-center gap-2">
+              <h2 className="font-display text-2xl font-extrabold text-[#E11D48] flex items-center gap-2">
                 <Activity className="w-5 h-5" />
                 AI-Generated Match Analysis Report
               </h2>
               <span className="text-[11px] text-slate-400">{structuredReport.disclaimer}</span>
             </div>
             <p className="text-sm text-slate-200 leading-relaxed">{structuredReport.summary}</p>
-            <div className="p-4 rounded-xl bg-[#060B16] border border-slate-800 text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+            <div className="p-4 rounded-xl bg-[#07090F] border border-slate-800 text-xs text-slate-300 leading-relaxed whitespace-pre-line">
               {structuredReport.generatedReport}
             </div>
           </div>
@@ -321,9 +321,9 @@ export function AiMatchCenter() {
               return (
                 <div
                   key={card.title}
-                  className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-4 space-y-2"
+                  className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-4 space-y-2"
                 >
-                  <h3 className="text-xs font-bold text-[#00A844] dark:text-[#00E676] flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold text-[#E11D48] dark:text-[#E11D48] flex items-center gap-1.5">
                     <Icon className="w-4 h-4" />
                     {card.title}
                   </h3>
@@ -335,7 +335,7 @@ export function AiMatchCenter() {
 
           {/* Tactical, Attacking/Defensive, Simple Explanation & Comparison */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-2">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-2">
               <h3 className="font-display text-lg font-bold">Attacking & Defensive Breakdown</h3>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 {structuredReport.attackingDefensiveAnalysis}
@@ -346,12 +346,12 @@ export function AiMatchCenter() {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-2">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-2">
               <h3 className="font-display text-lg font-bold">Team Comparison</h3>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 {structuredReport.comparison}
               </p>
-              <h4 className="font-display text-base font-bold pt-2 text-[#00A844] dark:text-[#00E676]">
+              <h4 className="font-display text-base font-bold pt-2 text-[#E11D48] dark:text-[#E11D48]">
                 Simple Language Explanation
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -363,12 +363,12 @@ export function AiMatchCenter() {
           {/* Strengths & Weaknesses + Player Performance Ratings */}
           <div className="grid md:grid-cols-2 gap-4">
             {structuredReport.strengthsWeaknesses.length > 0 && (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
                 <h3 className="font-display text-lg font-bold">Strengths & Weaknesses</h3>
                 {structuredReport.strengthsWeaknesses.map((sw, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
+                  <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 space-y-1 text-xs">
                     <p className="font-bold text-slate-900 dark:text-white">{sw.team}</p>
-                    <p className="text-[#00A844] dark:text-[#00E676]">
+                    <p className="text-[#E11D48] dark:text-[#E11D48]">
                       Strengths: {(sw.strengths || []).join(', ')}
                     </p>
                     <p className="text-rose-400">Weaknesses: {(sw.weaknesses || []).join(', ')}</p>
@@ -378,7 +378,7 @@ export function AiMatchCenter() {
             )}
 
             {structuredReport.playerRatings.length > 0 && (
-              <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+              <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
                 <h3 className="font-display text-lg font-bold">
                   AI Player Performance Ratings
                 </h3>
@@ -386,7 +386,7 @@ export function AiMatchCenter() {
                   {structuredReport.playerRatings.map((pr, i) => (
                     <div
                       key={i}
-                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 text-xs"
+                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="min-w-0">
                         <p className="font-bold truncate">
@@ -394,7 +394,7 @@ export function AiMatchCenter() {
                         </p>
                         <p className="text-[11px] text-slate-500 truncate">{pr.note}</p>
                       </div>
-                      <span className="font-mono-tabular font-black text-[#00E676] shrink-0">
+                      <span className="font-mono-tabular font-black text-[#E11D48] shrink-0">
                         {pr.rating}
                       </span>
                     </div>
@@ -406,7 +406,7 @@ export function AiMatchCenter() {
 
           {/* Key Match Events + Verified Facts */}
           {(structuredReport.keyEvents.length > 0 || structuredReport.verifiedDataPoints.length > 0) && (
-            <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 p-5 grid md:grid-cols-2 gap-4 text-xs">
+            <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 grid md:grid-cols-2 gap-4 text-xs">
               <div>
                 <h4 className="font-bold text-sm mb-2">Key Match Events</h4>
                 <ul className="space-y-1 text-slate-600 dark:text-slate-300">
@@ -416,7 +416,7 @@ export function AiMatchCenter() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-bold text-sm mb-2 text-[#00A844] dark:text-[#00E676]">
+                <h4 className="font-bold text-sm mb-2 text-[#E11D48] dark:text-[#E11D48]">
                   Verified Telemetry Fact Check
                 </h4>
                 <ul className="space-y-1 text-slate-600 dark:text-slate-300">
@@ -431,11 +431,11 @@ export function AiMatchCenter() {
       )}
 
       {/* Interactive Analyst Conversation Thread */}
-      <div className="rounded-2xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col min-h-[340px]">
+      <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col min-h-[340px]">
         <div className="flex-1 p-5 space-y-4 overflow-y-auto max-h-[480px]">
           {messages.length === 0 ? (
             <div className="py-10 text-center space-y-2 text-slate-500">
-              <Bot className="w-9 h-9 mx-auto text-[#00E676] opacity-80" />
+              <Bot className="w-9 h-9 mx-auto text-[#E11D48] opacity-80" />
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                 Ask STR AI Match Analyst anything about tactics, stats, or generate a Full Analyst Report above
               </p>
@@ -449,13 +449,13 @@ export function AiMatchCenter() {
                 <div
                   className={`max-w-2xl rounded-2xl px-4 py-3 text-sm space-y-2 ${
                     msg.role === 'user'
-                      ? 'bg-[#00E676] text-[#060B16] font-medium'
-                      : 'bg-slate-50 dark:bg-[#060B16] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100'
+                      ? 'bg-[#E11D48] text-white font-medium'
+                      : 'bg-slate-50 dark:bg-[#07090F] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-100'
                   }`}
                 >
                   {msg.role === 'assistant' && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-slate-800 text-[11px]">
-                      <span className="font-bold text-[#00A844] dark:text-[#00E676]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-white/10 text-[11px]">
+                      <span className="font-bold text-[#E11D48] dark:text-[#E11D48]">
                         AI-GENERATED ANALYSIS
                       </span>
                       {msg.verifiedContextTitle && (
@@ -472,7 +472,7 @@ export function AiMatchCenter() {
 
           {loading && (
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin text-[#00E676]" />
+              <Loader2 className="w-4 h-4 animate-spin text-[#E11D48]" />
               Analyzing football telemetry...
             </div>
           )}
@@ -489,19 +489,19 @@ export function AiMatchCenter() {
             e.preventDefault();
             runAnalysis(prompt, 'qa');
           }}
-          className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060B16] flex items-center gap-2"
+          className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07090F] flex items-center gap-2"
         >
           <input
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Ask a football question (e.g., How does a 3-5-2 beat a 4-3-3 high press?)"
-            className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-[#0B1324] border border-slate-200 dark:border-slate-800 text-sm focus:outline-none focus:border-[#00E676]"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 text-sm focus:outline-none focus:border-[#E11D48]"
           />
           <button
             type="submit"
             disabled={loading || !prompt.trim()}
-            className="px-4 py-2.5 rounded-xl bg-[#00E676] text-[#060B16] font-bold text-sm hover:brightness-105 transition disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-[#E11D48] text-white font-bold text-sm hover:brightness-105 transition disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             <Send className="w-4 h-4" />
             Ask

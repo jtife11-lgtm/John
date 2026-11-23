@@ -6,7 +6,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- Phase 3: Primitives ---
+    // --- Primitives ---
     function isValidId(id) {
       return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -219,7 +219,7 @@ service cloud.firestore {
         && data.fromUid != data.toUid
         && isStringBounded(data.fromName, 1, 64)
         && isStringBounded(data.toName, 1, 64)
-        && data.gameType in ['penalty', 'quiz', 'higher_lower', 'card_battle', 'guess_player', 'guess_club']
+        && data.gameType in ['penalty', 'quiz', 'higher_lower', 'card_battle', 'guess_player', 'guess_club', 'free_kick', 'trivia_blitz', 'reflex_save']
         && data.status in ['pending', 'accepted', 'completed', 'declined']
         && data.fromScore is int && data.fromScore >= 0 && data.fromScore <= 10000
         && data.toScore is int && data.toScore >= 0 && data.toScore <= 10000
@@ -293,12 +293,14 @@ service cloud.firestore {
 
     function isValidNotification(data) {
       return data.keys().hasAll(['userId', 'type', 'title', 'body', 'read', 'createdAt'])
-        && data.keys().hasOnly(['userId', 'type', 'title', 'body', 'read', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'type', 'title', 'body', 'read', 'senderUid', 'roomId', 'createdAt'])
         && isValidId(data.userId)
         && data.type in ['goal', 'kickoff', 'final', 'red_card', 'news', 'friend', 'chat', 'quiz', 'streak', 'challenge', 'trade']
         && isStringBounded(data.title, 1, 120)
         && isStringBounded(data.body, 1, 300)
         && data.read is bool
+        && isOptionalStringBounded(data, 'senderUid', 128)
+        && isOptionalStringBounded(data, 'roomId', 128)
         && data.createdAt is timestamp;
     }
 
@@ -324,6 +326,47 @@ service cloud.firestore {
         && isValidId(data.authorId)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
+    }
+
+    function isValidSimMatch(data) {
+      return data.keys().hasAll([
+          'userId', 'mode', 'competitionLabel', 'homeTeamId', 'homeName',
+          'awayTeamId', 'awayName', 'homeScore', 'awayScore',
+          'wentToExtraTime', 'wentToPenalties', 'formationHome', 'formationAway',
+          'manOfTheMatch', 'motmRating', 'summaryLine', 'possessionHome',
+          'shotsHome', 'shotsAway', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'mode', 'competitionLabel', 'homeTeamId', 'homeName',
+          'awayTeamId', 'awayName', 'homeScore', 'awayScore',
+          'homePenScore', 'awayPenScore',
+          'wentToExtraTime', 'wentToPenalties', 'formationHome', 'formationAway',
+          'manOfTheMatch', 'motmRating', 'summaryLine', 'possessionHome',
+          'shotsHome', 'shotsAway', 'keyEvents', 'createdAt'
+        ])
+        && isValidId(data.userId)
+        && data.mode in ['quick', 'ucl', 'epl', 'laliga', 'world_cup', 'tournament', 'dream']
+        && isStringBounded(data.competitionLabel, 2, 80)
+        && isStringBounded(data.homeTeamId, 1, 64)
+        && isStringBounded(data.homeName, 1, 64)
+        && isStringBounded(data.awayTeamId, 1, 64)
+        && isStringBounded(data.awayName, 1, 64)
+        && data.homeScore is int && data.homeScore >= 0 && data.homeScore <= 30
+        && data.awayScore is int && data.awayScore >= 0 && data.awayScore <= 30
+        && (!('homePenScore' in data) || (data.homePenScore is int && data.homePenScore >= 0 && data.homePenScore <= 30))
+        && (!('awayPenScore' in data) || (data.awayPenScore is int && data.awayPenScore >= 0 && data.awayPenScore <= 30))
+        && data.wentToExtraTime is bool
+        && data.wentToPenalties is bool
+        && data.formationHome in ['4-3-3', '4-2-3-1', '3-5-2', '4-4-2']
+        && data.formationAway in ['4-3-3', '4-2-3-1', '3-5-2', '4-4-2']
+        && isStringBounded(data.manOfTheMatch, 1, 80)
+        && isStringBounded(data.motmRating, 1, 10)
+        && isStringBounded(data.summaryLine, 2, 300)
+        && data.possessionHome is int && data.possessionHome >= 0 && data.possessionHome <= 100
+        && data.shotsHome is int && data.shotsHome >= 0 && data.shotsHome <= 100
+        && data.shotsAway is int && data.shotsAway >= 0 && data.shotsAway <= 100
+        && (!('keyEvents' in data) || isStringListBounded(data.keyEvents, 16))
+        && data.createdAt is timestamp;
     }
 
     // --- Collection Rules ---
@@ -382,14 +425,14 @@ service cloud.firestore {
       allow list: if isSignedIn()
         && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
       allow create: if isValidId(requestId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidFriendRequest(incoming())
         && incoming().fromUid == request.auth.uid
         && incoming().status == 'pending'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(requestId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidFriendRequest(incoming())
         && incoming().fromUid == existing().fromUid
         && incoming().toUid == existing().toUid
@@ -411,7 +454,7 @@ service cloud.firestore {
       allow get: if isValidId(streakId) && isSignedIn();
       allow list: if isSignedIn();
       allow create: if isValidId(streakId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidFriendStreak(incoming())
         && request.auth.uid in incoming().participantIds
         && incoming().lastSenderId == request.auth.uid
@@ -419,7 +462,7 @@ service cloud.firestore {
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(streakId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidFriendStreak(incoming())
         && incoming().userA == existing().userA
         && incoming().userB == existing().userB
@@ -441,6 +484,7 @@ service cloud.firestore {
 
     match /chats/{chatId} {
       allow get: if isValidId(chatId) && (
+        (isSignedIn() && resource == null) ||
         existing().type == 'channel' ||
         (isSignedIn() && (request.auth.uid in existing().participantIds || isAdmin()))
       );
@@ -450,14 +494,14 @@ service cloud.firestore {
         isAdmin()
       );
       allow create: if isValidId(chatId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidChatRoom(incoming())
         && incoming().createdBy == request.auth.uid
         && request.auth.uid in incoming().participantIds
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(chatId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidChatRoom(incoming())
         && incoming().createdBy == existing().createdBy
         && incoming().type == existing().type
@@ -475,20 +519,22 @@ service cloud.firestore {
       allow delete: if isValidId(chatId) && isAdmin();
 
       match /messages/{messageId} {
-        allow get: if isValidId(chatId) && isValidId(messageId) && (
-          get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
-          (isSignedIn() && (
+        allow get: if isValidId(chatId) && isValidId(messageId) && isSignedIn() && (
+          exists(/databases/$(database)/documents/chats/$(chatId)) && (
+            get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds ||
             isAdmin()
-          ))
+          )
         );
         allow list: if isSignedIn() && (
-          get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds ||
-          isAdmin()
+          exists(/databases/$(database)/documents/chats/$(chatId)) && (
+            get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'channel' ||
+            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds ||
+            isAdmin()
+          )
         );
         allow create: if isValidId(chatId) && isValidId(messageId)
-          && isVerifiedUser()
+          && isSignedIn()
           && isValidChatMessage(incoming())
           && incoming().senderId == request.auth.uid
           && incoming().createdAt == request.time
@@ -497,7 +543,7 @@ service cloud.firestore {
             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
           );
         allow update: if isValidId(chatId) && isValidId(messageId)
-          && isVerifiedUser()
+          && isSignedIn()
           && isValidChatMessage(incoming())
           && incoming().senderId == existing().senderId
           && incoming().createdAt == existing().createdAt
@@ -526,13 +572,13 @@ service cloud.firestore {
       allow get: if isValidId(userId) && isSignedIn();
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isValidId(userId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isOwner(userId)
         && isValidCardCollection(incoming(), userId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(userId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidCardCollection(incoming(), userId)
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
@@ -554,7 +600,7 @@ service cloud.firestore {
       allow list: if isSignedIn()
         && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
       allow create: if isValidId(tradeId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidCardTrade(incoming())
         && incoming().fromUid == request.auth.uid
         && incoming().status == 'pending'
@@ -563,7 +609,7 @@ service cloud.firestore {
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(tradeId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidCardTrade(incoming())
         && incoming().fromUid == existing().fromUid
         && incoming().toUid == existing().toUid
@@ -602,14 +648,14 @@ service cloud.firestore {
       allow list: if isSignedIn()
         && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
       allow create: if isValidId(challengeId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidGameChallenge(incoming())
         && incoming().fromUid == request.auth.uid
         && incoming().status == 'pending'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(challengeId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidGameChallenge(incoming())
         && incoming().fromUid == existing().fromUid
         && incoming().toUid == existing().toUid
@@ -631,14 +677,14 @@ service cloud.firestore {
       allow get: if isValidId(pollId);
       allow list: if true;
       allow create: if isValidId(pollId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidPoll(incoming())
         && incoming().createdBy == request.auth.uid
         && incoming().totalVotes == 0
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(pollId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidPoll(incoming())
         && incoming().createdBy == existing().createdBy
         && incoming().createdAt == existing().createdAt
@@ -657,7 +703,7 @@ service cloud.firestore {
         allow get: if isValidId(pollId) && isValidId(voterId) && (isOwner(voterId) || isAdmin());
         allow list: if isAdmin();
         allow create: if isValidId(pollId) && isValidId(voterId)
-          && isVerifiedUser()
+          && isSignedIn()
           && isOwner(voterId)
           && isValidPollVote(incoming(), voterId)
           && incoming().createdAt == request.time
@@ -670,13 +716,13 @@ service cloud.firestore {
       allow get: if isValidId(userId) && isSignedIn();
       allow list: if isSignedIn();
       allow create: if isValidId(userId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isOwner(userId)
         && isValidFantasyTeam(incoming(), userId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(userId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidFantasyTeam(incoming(), userId)
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
@@ -694,7 +740,7 @@ service cloud.firestore {
       allow get: if isValidId(predictionId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isValidId(predictionId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidPrediction(incoming())
         && incoming().userId == request.auth.uid
         && incoming().createdAt == request.time;
@@ -706,7 +752,7 @@ service cloud.firestore {
       allow get: if isValidId(articleDocId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isValidId(articleDocId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidSavedArticle(incoming())
         && incoming().userId == request.auth.uid
         && incoming().savedAt == request.time;
@@ -718,12 +764,21 @@ service cloud.firestore {
       allow get: if isValidId(notifId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isValidId(notifId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidNotification(incoming())
-        && (incoming().userId == request.auth.uid || isAdmin())
-        && incoming().createdAt == request.time;
+        && incoming().createdAt == request.time
+        && (
+          incoming().userId == request.auth.uid ||
+          isAdmin() ||
+          (
+            incoming().type in ['friend', 'chat', 'streak', 'challenge', 'trade']
+            && ('senderUid' in incoming())
+            && incoming().senderUid == request.auth.uid
+            && incoming().read == false
+          )
+        );
       allow update: if isValidId(notifId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidNotification(incoming())
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
@@ -736,7 +791,7 @@ service cloud.firestore {
       allow get: if isValidId(reportId) && isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
       allow create: if isValidId(reportId)
-        && isVerifiedUser()
+        && isSignedIn()
         && isValidReport(incoming())
         && incoming().reporterId == request.auth.uid
         && incoming().status == 'open'
@@ -769,6 +824,18 @@ service cloud.firestore {
         && incoming().updatedAt == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'category', 'imageUrl', 'updatedAt']);
       allow delete: if isValidId(newsId) && isAdmin();
+    }
+
+    match /simMatches/{simId} {
+      allow get: if isValidId(simId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(simId)
+        && isSignedIn()
+        && isValidSimMatch(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(simId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
     }
   }
 }

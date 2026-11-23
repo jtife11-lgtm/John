@@ -25,6 +25,7 @@ import type { Lang } from '../lib/i18n';
 export type NavTab =
   | 'home'
   | 'scores'
+  | 'simulator'
   | 'games'
   | 'cards'
   | 'players'
@@ -398,6 +399,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
       };
 
+      socket.onmessage = (ev) => {
+        try {
+          const frame = JSON.parse(ev.data);
+          if (frame.type === 'chat_message' && frame.fromUid !== user.uid) {
+            pushToast(`💬 ${frame.fromName || 'Supporter'}: ${frame.preview || 'New message'}`, 'info');
+          }
+        } catch {
+          // ignore malformed frame
+        }
+      };
+
       socket.onclose = () => {
         if (!closed) {
           setTimeout(connect, 4000);
@@ -580,12 +592,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           {toasts.map((toast) => (
             <div
               key={toast.id}
-              className={`pointer-events-auto px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-md transition-all ${
+              className={`pointer-events-auto px-4 py-3 rounded-xl text-sm font-medium shadow-2xl border backdrop-blur-md transition-all animate-fadeIn ${
                 toast.tone === 'success'
-                  ? 'bg-emerald-950/95 text-[#00E676] border-emerald-500/40'
+                  ? 'bg-[#0F1219]/95 text-white border-[#10B981]/50'
                   : toast.tone === 'error'
-                  ? 'bg-rose-950/95 text-rose-200 border-rose-500/40'
-                  : 'bg-slate-900/95 text-white border-slate-700'
+                  ? 'bg-rose-950/95 text-rose-100 border-rose-500/60'
+                  : 'bg-[#0F1219]/95 text-white border-[#E11D48]/50'
               }`}
             >
               {toast.message}
