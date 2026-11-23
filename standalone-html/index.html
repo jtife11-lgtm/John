@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>STR SCORES — Live Football, Match Simulator, Games & Community</title>
+    <meta
+      name="description"
+      content="STR SCORES Standalone Web Edition — Real-time Football Scores, 7-Mode Football Match Simulator, Mini-Games, Player Cards, News, Fantasy XI, STR VOTE & Real-Time Community."
+    />
+    <meta property="og:title" content="STR SCORES" />
+    <meta
+      property="og:description"
+      content="Live football scores, interactive Match Simulator, football mini-games, fantasy leagues, fan voting, and real-time supporter community."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#07090F" />
+    <link rel="icon" type="image/jpeg" href="./assets/images/str_scores_logo_1795349596176.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <!-- Welcome Screen (first visit before entering as Guest or Signing In) -->
+    <section id="welcome-screen" class="welcome-shell hidden" aria-label="Welcome to STR SCORES">
+      <div class="welcome-bg"></div>
+      <div class="welcome-card">
+        <div class="welcome-brand">
+          <img src="./assets/images/str_scores_logo_1795349596176.jpg" alt="STR SCORES Logo" class="brand-logo-lg" />
+          <div>
+            <span class="badge-accent">STANDALONE HTML EDITION</span>
+            <h1 class="font-display welcome-title">STR <span class="text-crimson">SCORES</span></h1>
+          </div>
+        </div>
+        <p class="welcome-desc">
+          Live Football Scoreboard, 7-Mode Tactical Match Simulator, 8 Playable Mini-Games, Player Cards, Real-Time Chat, Fantasy XI &amp; Global Football News.
+        </p>
+        <div class="welcome-features">
+          <div class="wf-item"><strong>Live Scores</strong><span>ESPN &amp; TheSportsDB feeds</span></div>
+          <div class="wf-item"><strong>Match Simulator</strong><span>0–90+ min · VAR · Pens</span></div>
+          <div class="wf-item"><strong>Mini-Games &amp; Cards</strong><span>Packs, Trivia, Shootouts</span></div>
+          <div class="wf-item"><strong>Cloud Sync Ready</strong><span>Firebase Auth &amp; Firestore</span></div>
+        </div>
+        <div class="welcome-actions">
+          <button id="btn-enter-guest" class="btn-primary btn-lg">Enter as Guest</button>
+          <button id="btn-welcome-signin" class="btn-secondary btn-lg">Sign In / Create Account</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main App Shell -->
+    <div id="app-shell" class="app-shell hidden">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="container header-main">
+          <button class="brand-btn" data-nav="home" aria-label="STR SCORES Home">
+            <img src="./assets/images/str_scores_logo_1795349596176.jpg" alt="STR SCORES" class="brand-logo-sm" />
+            <span class="font-display brand-wordmark">STR <span class="text-crimson">SCORES</span></span>
+          </button>
+
+          <nav class="desktop-nav" aria-label="Primary Navigation">
+            <button class="nav-link" data-nav="home" data-i18n="home">Home</button>
+            <button class="nav-link" data-nav="scores" data-i18n="scores">Scores</button>
+            <button class="nav-link" data-nav="simulator" data-i18n="simulator">Match Sim</button>
+            <button class="nav-link" data-nav="community" data-i18n="chat">Chat</button>
+            <button class="nav-link" data-nav="games" data-i18n="games">Games</button>
+            <button class="nav-link" data-nav="news" data-i18n="news">News</button>
+          </nav>
+
+          <div class="header-right">
+            <button id="btn-header-profile" class="btn-profile" data-nav="profile">
+              <span class="dot-status" id="header-auth-dot"></span>
+              <span id="header-user-label">Sign In</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Workspace Sub-Toolbar -->
+        <div class="sub-toolbar-wrap">
+          <div class="container sub-toolbar">
+            <div class="sub-links no-scrollbar" id="sub-links">
+              <button class="sub-btn" data-nav="simulator" data-i18n="simulator">Match Sim</button>
+              <button class="sub-btn" data-nav="cards" data-i18n="cards">Player Cards</button>
+              <button class="sub-btn" data-nav="players" data-i18n="players">Players</button>
+              <button class="sub-btn" data-nav="ai" data-i18n="aiCenter">STR AI Analyst</button>
+              <button class="sub-btn" data-nav="stats" data-i18n="stats">Statistics</button>
+              <button class="sub-btn" data-nav="fantasy" data-i18n="fantasy">Fantasy</button>
+              <button class="sub-btn" data-nav="vote" data-i18n="vote">STR VOTE</button>
+              <button class="sub-btn" data-nav="extra" data-i18n="explore">Explore</button>
+              <button class="sub-btn" data-nav="profile" data-i18n="profile">Profile</button>
+            </div>
+            <div class="utility-controls">
+              <button id="btn-open-search" class="util-btn" title="Search Football & News" aria-label="Search">
+                <span>🔍</span>
+                <span class="hide-xs">Search</span>
+              </button>
+              <button id="btn-toggle-theme" class="util-btn" title="Toggle Dark / Light Mode" aria-label="Toggle Theme">
+                <span id="theme-icon">☀️</span>
+              </button>
+              <button id="btn-toggle-lang" class="util-btn" title="Switch English / Arabic" aria-label="Toggle Language">
+                <span class="text-crimson font-bold" id="lang-label">AR</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dynamic Active View Container -->
+      <main id="app-main" class="container main-content fade-in" role="main"></main>
+
+      <!-- Mobile Bottom Navigation -->
+      <nav class="bottom-nav" aria-label="Mobile Navigation">
+        <button class="bnav-btn" data-nav="home">
+          <span class="bnav-ico">🏠</span>
+          <span class="bnav-txt" data-i18n="home">Home</span>
+        </button>
+        <button class="bnav-btn" data-nav="scores">
+          <span class="bnav-ico">⚽</span>
+          <span class="bnav-txt" data-i18n="scores">Scores</span>
+        </button>
+        <button class="bnav-btn" data-nav="simulator">
+          <span class="bnav-ico">⚔️</span>
+          <span class="bnav-txt" data-i18n="simulator">Match Sim</span>
+        </button>
+        <button class="bnav-btn" data-nav="games">
+          <span class="bnav-ico">🎮</span>
+          <span class="bnav-txt" data-i18n="games">Games</span>
+        </button>
+        <button class="bnav-btn" data-nav="community">
+          <span class="bnav-ico">💬</span>
+          <span class="bnav-txt" data-i18n="chat">Chat</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Reusable Modal Container -->
+    <div id="modal-root" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+      <div id="modal-card" class="modal-card"></div>
+    </div>
+
+    <!-- Toast Notifications Stack -->
+    <div id="toast-root" class="toast-stack" aria-live="polite"></div>
+
+    <!-- Application Scripts -->
+    <script src="./js/config.js"></script>
+    <script src="./js/data.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/simulator.js"></script>
+    <script src="./js/games.js"></script>
+    <script type="module" src="./js/firebase-sync.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
+</html>

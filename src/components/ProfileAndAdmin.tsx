@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Check, LogOut, Settings, Shield, Trash2, User } from 'lucide-react';
+import { Bell, Check, Download, ExternalLink, LogOut, Settings, Shield, Trash2, User } from 'lucide-react';
 import { deleteUser, updatePassword } from 'firebase/auth';
 import {
   collection,
@@ -78,6 +78,36 @@ export function ProfileScreen() {
           >
             Edit Guest Clubs
           </button>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/10 text-left space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-bold">Standalone HTML Website (.zip)</h2>
+              <p className="text-xs text-slate-500">
+                Download the complete static HTML, CSS, JavaScript, and asset bundle ready for Netlify, Vercel, GitHub Pages, or cPanel.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="/api/export/standalone-zip"
+                download="str-scores-standalone-html.zip"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:opacity-90"
+              >
+                <Download className="w-4 h-4" />
+                Download ZIP
+              </a>
+              <a
+                href="/standalone/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:border-[#E11D48]"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Preview Standalone
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -262,6 +292,35 @@ export function ProfileScreen() {
               Delete Account Permanently
             </button>
           </form>
+
+          <div className="rounded-2xl bg-white dark:bg-[#0F1219] border border-slate-200 dark:border-white/10 p-5 space-y-3">
+            <h2 className="font-display text-xl font-bold flex items-center gap-2">
+              <Download className="w-5 h-5 text-[#E11D48]" />
+              Standalone HTML Website Export (.zip)
+            </h2>
+            <p className="text-xs text-slate-500">
+              Complete responsive HTML, CSS, JS, and assets package ready for any static web host.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="/api/export/standalone-zip"
+                download="str-scores-standalone-html.zip"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#E11D48] text-white text-xs font-bold hover:opacity-90"
+              >
+                <Download className="w-4 h-4" />
+                Download ZIP Package
+              </a>
+              <a
+                href="/standalone/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:border-[#E11D48]"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open Standalone Preview
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Notifications & Preferences */}

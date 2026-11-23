@@ -1355,6 +1355,20 @@ wss.on('connection', (ws) => {
 });
 
 async function startServer() {
+  const downloadsDir = path.resolve(__dirname, 'public/downloads');
+  const standaloneDir = path.resolve(__dirname, 'standalone-html');
+  const standaloneZipPath = path.join(downloadsDir, 'str-scores-standalone-html.zip');
+
+  app.get('/api/export/standalone-zip', (_req, res) => {
+    res.download(standaloneZipPath, 'str-scores-standalone-html.zip', (err) => {
+      if (err && !res.headersSent) {
+        res.status(404).json({ error: 'Standalone ZIP package not found.' });
+      }
+    });
+  });
+  app.use('/downloads', express.static(downloadsDir));
+  app.use('/standalone', express.static(standaloneDir));
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
