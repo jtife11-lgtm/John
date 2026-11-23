@@ -802,6 +802,11 @@ export function SimulatorMatchCenter({
               ballPos={match.ballPos}
               highlightedPlayerId={match.highlightedPlayerId}
               activeFlash={match.activeFlash}
+              playing={playing}
+              phase={match.phase}
+              latestEvent={match.events[0]}
+              mentalityHome={match.mentalityHome}
+              mentalityAway={match.mentalityAway}
             />
 
             {/* Quick Live Telemetry Strip below pitch */}

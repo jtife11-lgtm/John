@@ -34,7 +34,11 @@
     tournamentBracket: null,
     activeBracketMatch: null, // { roundIdx, matchIdx }
     state: null,
-    history: []
+    history: [],
+    animPositions: {},
+    ballAnim: { x: 50, y: 50, px: 50, py: 50 },
+    rafId: null,
+    lastRafTs: 0
   };
 
   function uid(prefix) {
@@ -241,7 +245,7 @@
     active.forEach(function (ls) {
       var stFactor = 0.72 + (ls.stamina / 100) * 0.28;
       var eff = ls.player.overall * stFactor;
-      if (ls.player.roleGroup === 'ATT') { sumAtt += eff; cntAtt++; }
+      if (ls.player.roleGroup === 'FWD') { sumAtt += eff; cntAtt++; }
       else if (ls.player.roleGroup === 'MID') { sumMid += eff; cntMid++; }
       else if (ls.player.roleGroup === 'DEF') { sumDef += eff; cntDef++; }
       else gkVal = eff;
@@ -443,7 +447,7 @@
     if (Math.random() < shotChance) {
       var activeOutfield = attRoster.filter(function (r) { return r.onPitch && !r.redCard && r.player.roleGroup !== 'GK'; });
       var shooter = pickWeighted(activeOutfield, function (r) {
-        return r.player.roleGroup === 'ATT' ? r.player.stats.sho * 2.3 : r.player.roleGroup === 'MID' ? r.player.stats.sho * 1.15 : r.player.stats.sho * 0.3;
+        return r.player.roleGroup === 'FWD' ? r.player.stats.sho * 2.3 : r.player.roleGroup === 'MID' ? r.player.stats.sho * 1.15 : r.player.stats.sho * 0.3;
       });
       var assister = pickWeighted(activeOutfield.filter(function (r) { return shooter && r.player.id !== shooter.player.id; }), function (r) {
         return r.player.stats.pas * (r.player.roleGroup === 'MID' ? 1.7 : 1.0);
@@ -547,11 +551,21 @@
     };
   }
 
+  function stopPitchAnim() {
+    if (ui.rafId) {
+      cancelAnimationFrame(ui.rafId);
+      ui.rafId = null;
+    }
+  }
+
   function stopPlayback() {
     ui.playing = false;
     if (ui.timerId) {
       clearInterval(ui.timerId);
       ui.timerId = null;
+    }
+    if (window.STR_CURRENT_VIEW !== 'simulator') {
+      stopPitchAnim();
     }
   }
 
@@ -571,6 +585,8 @@
       styleHome: ui.styleHome,
       styleAway: ui.styleAway
     });
+    ui.animPositions = {};
+    ui.ballAnim = { x: 50, y: 50, px: 50, py: 50 };
     ui.subTab = 'pitch';
     render();
   }
@@ -601,6 +617,7 @@
         ui.state.savedToHistory = true;
         saveMatchToHistory(ui.state, generateReport(ui.state));
       }
+      if (ui.subTab === 'pitch' && updatePitchTickDOM(ui.state)) return;
       render();
     }, intervalMs);
     render();
@@ -614,6 +631,7 @@
       ui.state.savedToHistory = true;
       saveMatchToHistory(ui.state, generateReport(ui.state));
     }
+    if (ui.subTab === 'pitch' && updatePitchTickDOM(ui.state)) return;
     render();
   }
 
@@ -664,6 +682,274 @@
     if (window.STR_TOAST) window.STR_TOAST(winTeam.shortName + ' advances in tournament!', 'success');
   }
 
+  function hashStr(s) {
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h % 360) * 0.01745;
+  }
+
+  function getMentalityBias(m) {
+    if (m === 'Defensive') return -5.5;
+    if (m === 'Attacking') return 5.5;
+    if (m === 'All-Out Attack') return 9.5;
+    return 0;
+  }
+
+  function ensurePitchAnimLoop() {
+    if (ui.rafId) return;
+    ui.lastRafTs = performance.now();
+
+    function frame(now) {
+      if (window.STR_CURRENT_VIEW !== 'simulator' || ui.subTab !== 'pitch' || !ui.state) {
+        ui.rafId = null;
+        return;
+      }
+      var dt = Math.min(0.05, Math.max(0.004, (now - ui.lastRafTs) / 1000));
+      ui.lastRafTs = now;
+      var t = now / 1000;
+      var st = ui.state;
+      var pitchEl = document.querySelector('.sim-pitch');
+      if (!pitchEl) {
+        ui.rafId = requestAnimationFrame(frame);
+        return;
+      }
+
+      var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var isPause = st.phase === 'HALFTIME' || st.phase === 'EXTRA_TIME_BREAK' || st.phase === 'FINISHED';
+      var activeMotion = !reduced && !isPause;
+      var latestEv = st.events && st.events[0];
+      var evType = latestEv ? latestEv.type : '';
+      var evSide = latestEv ? latestEv.side : 'neutral';
+      var isGoal = evType === 'goal' || evType === 'penalty' || (st.activeFlash && String(st.activeFlash.title || '').indexOf('GOAL') >= 0);
+      var isSave = evType === 'save';
+      var isPens = st.phase === 'PENALTIES';
+
+      var dribX = activeMotion && ui.playing ? Math.sin(t * 2.7) * 1.15 : 0;
+      var dribY = activeMotion && ui.playing ? Math.cos(t * 3.3) * 1.15 : 0;
+      var targetBx = clamp(st.ballPos.x + dribX, 3.5, 96.5);
+      var targetBy = clamp(st.ballPos.y + dribY, 5, 95);
+
+      var bAlpha = reduced ? 1 : 1 - Math.exp(-(ui.playing ? 8.5 : 5.5) * dt);
+      ui.ballAnim.px = ui.ballAnim.x + (ui.ballAnim.px - ui.ballAnim.x) * Math.exp(-5 * dt);
+      ui.ballAnim.py = ui.ballAnim.y + (ui.ballAnim.py - ui.ballAnim.y) * Math.exp(-5 * dt);
+      ui.ballAnim.x += (targetBx - ui.ballAnim.x) * bAlpha;
+      ui.ballAnim.y += (targetBy - ui.ballAnim.y) * bAlpha;
+
+      var ballEl = pitchEl.querySelector('.pitch-ball');
+      if (ballEl) {
+        ballEl.style.left = ui.ballAnim.x.toFixed(3) + '%';
+        ballEl.style.top = ui.ballAnim.y.toFixed(3) + '%';
+      }
+
+      var trailEl = pitchEl.querySelector('#pitch-trail');
+      if (trailEl) {
+        var spd = Math.hypot(ui.ballAnim.x - ui.ballAnim.px, ui.ballAnim.y - ui.ballAnim.py);
+        trailEl.setAttribute('x1', ui.ballAnim.px.toFixed(1));
+        trailEl.setAttribute('y1', (ui.ballAnim.py * 0.64).toFixed(1));
+        trailEl.setAttribute('x2', ui.ballAnim.x.toFixed(1));
+        trailEl.setAttribute('y2', (ui.ballAnim.y * 0.64).toFixed(1));
+        trailEl.setAttribute('stroke-opacity', spd > 0.35 ? clamp(spd * 0.16, 0.15, 0.72).toFixed(2) : '0');
+      }
+
+      var ringEl = pitchEl.querySelector('#pitch-ring');
+      if (ringEl) {
+        if (isGoal || isSave || evType === 'var') {
+          var rr = 1.6 + ((t * 5.2) % 4.4);
+          var ra = clamp(1 - ((t * 5.2) % 4.4) / 4.4, 0, 0.85);
+          ringEl.setAttribute('cx', ui.ballAnim.x.toFixed(1));
+          ringEl.setAttribute('cy', (ui.ballAnim.y * 0.64).toFixed(1));
+          ringEl.setAttribute('r', rr.toFixed(2));
+          ringEl.setAttribute('stroke-opacity', ra.toFixed(2));
+          ringEl.setAttribute('stroke', isGoal ? '#FACC15' : isSave ? '#10B981' : '#E11D48');
+        } else {
+          ringEl.setAttribute('stroke-opacity', '0');
+        }
+      }
+
+      var nodeEls = pitchEl.querySelectorAll('.pitch-node');
+      var nearestHomeId = '';
+      var nearestAwayId = '';
+      var minH = 9999;
+      var minA = 9999;
+
+      nodeEls.forEach(function (n) {
+        var role = n.getAttribute('data-role') || 'MID';
+        if (role === 'GK') return;
+        var bx = parseFloat(n.getAttribute('data-bx') || '50');
+        var by = parseFloat(n.getAttribute('data-by') || '50');
+        var side = n.getAttribute('data-side');
+        var pid = n.getAttribute('data-sim-player');
+        var d = Math.hypot(bx - targetBx, by - targetBy);
+        if (side === 'home' && d < minH) { minH = d; nearestHomeId = pid; }
+        if (side === 'away' && d < minA) { minA = d; nearestAwayId = pid; }
+      });
+
+      var zoneShift = (targetBx - 50) / 50;
+      var yShift = targetBy - 50;
+      var hMent = getMentalityBias(st.mentalityHome);
+      var aMent = getMentalityBias(st.mentalityAway);
+      var celebX = evSide === 'home' ? 91 : 9;
+      var celebY = st.ballPos.y < 50 ? 15 : 85;
+
+      nodeEls.forEach(function (n, idx) {
+        var pid = n.getAttribute('data-sim-player');
+        var side = n.getAttribute('data-side');
+        var role = n.getAttribute('data-role') || 'MID';
+        var bx = parseFloat(n.getAttribute('data-bx') || '50');
+        var by = parseFloat(n.getAttribute('data-by') || '50');
+        var stamina = parseFloat(n.getAttribute('data-stamina') || '90');
+        var seed = hashStr(pid);
+        var stamF = clamp(stamina / 100, 0.35, 1);
+        var runAmp = activeMotion && ui.playing ? 1.35 * stamF : 0.22;
+
+        var tx = bx;
+        var ty = by;
+
+        if (isPens) {
+          if (role === 'GK') {
+            var defSide = targetBx > 50 ? 'away' : 'home';
+            if (side === defSide) {
+              tx = defSide === 'away' ? 95.5 : 4.5;
+              ty = 50 + (activeMotion ? Math.sin(t * 7.2) * 3.4 : 0);
+            } else {
+              tx = side === 'home' ? 46 : 54;
+              ty = 42 + (idx % 3) * 8;
+            }
+          } else if ((targetBx > 50 && pid === nearestHomeId) || (targetBx <= 50 && pid === nearestAwayId)) {
+            tx = targetBx > 50 ? 85 : 15;
+            ty = 50 + (activeMotion ? Math.sin(t * 4) * 1.1 : 0);
+          } else {
+            tx = 48 + (side === 'home' ? -2.5 : 2.5) + Math.cos(seed) * 1.6;
+            ty = 22 + ((idx % 11) / 10) * 56;
+          }
+        } else if (isGoal && st.highlightedPlayerId && (evSide === 'home' || evSide === 'away')) {
+          if (pid === st.highlightedPlayerId) {
+            tx = celebX + (activeMotion ? Math.sin(t * 5.2) * 1.2 : 0);
+            ty = celebY + (activeMotion ? Math.cos(t * 5.2) * 1.2 : 0);
+          } else if (side === evSide && role !== 'GK') {
+            var ang = seed * 2;
+            var rad = idx % 2 === 0 ? 5.5 : 11;
+            tx = clamp(bx * 0.35 + (celebX + Math.cos(ang) * rad) * 0.65, 6, 94);
+            ty = clamp(by * 0.35 + (celebY + Math.sin(ang) * rad) * 0.65, 7, 93);
+          } else if (role === 'GK') {
+            tx = side === 'home' ? 5.5 : 94.5;
+            ty = 50;
+          } else {
+            tx = bx * 0.72 + 50 * 0.28;
+            ty = by * 0.78 + 50 * 0.22;
+          }
+        } else if (role === 'GK') {
+          var isH = side === 'home';
+          var sweep = isH ? clamp(zoneShift * 3.5, 0, 4.5) : clamp(-zoneShift * 3.5, 0, 4.5);
+          var dive = isSave && ((isH && targetBx < 25) || (!isH && targetBx > 75)) ? clamp((targetBy - 50) * 0.55, -8, 8) : 0;
+          tx = isH ? 5.2 + sweep : 94.8 - sweep;
+          ty = clamp(50 + yShift * 0.22 + dive + Math.sin(t * 2 + seed) * 0.6, 40, 60);
+        } else {
+          var isHome = side === 'home';
+          var dir = isHome ? 1 : -1;
+          var rWt = role === 'FWD' ? 18 : role === 'MID' ? 15 : 11;
+          tx = bx + zoneShift * rWt + (isHome ? hMent : aMent) * dir;
+          ty = by + yShift * (role === 'MID' ? 0.34 : 0.24);
+
+          var homeOwns = targetBx >= 50 || evSide === 'home';
+          if (pid === nearestHomeId) {
+            var eRatio = homeOwns ? 0.76 : 0.52;
+            tx = tx * (1 - eRatio) + (targetBx + (homeOwns ? -1.8 : -4.2)) * eRatio;
+            ty = ty * (1 - eRatio) + targetBy * eRatio;
+          } else if (pid === nearestAwayId) {
+            var eRatioA = !homeOwns ? 0.76 : 0.52;
+            tx = tx * (1 - eRatioA) + (targetBx + (!homeOwns ? 1.8 : 4.2)) * eRatioA;
+            ty = ty * (1 - eRatioA) + targetBy * eRatioA;
+          }
+
+          if (activeMotion) {
+            tx += Math.sin(t * 1.9 + seed) * runAmp + Math.cos(t * 3.1 + seed * 2) * (runAmp * 0.45);
+            ty += Math.cos(t * 2.2 + seed * 1.5) * runAmp;
+          }
+          tx = clamp(tx, 6.5, 93.5);
+          ty = clamp(ty, 7, 93);
+        }
+
+        var prevPos = ui.animPositions[pid] || { x: tx, y: ty };
+        var lerpRate = reduced ? 16 : isGoal ? 6.2 : ui.playing ? 5.2 : 4.0;
+        var alpha = 1 - Math.exp(-lerpRate * dt);
+        var nx = prevPos.x + (tx - prevPos.x) * alpha;
+        var ny = prevPos.y + (ty - prevPos.y) * alpha;
+        ui.animPositions[pid] = { x: nx, y: ny };
+        n.style.left = nx.toFixed(3) + '%';
+        n.style.top = ny.toFixed(3) + '%';
+      });
+
+      ui.rafId = requestAnimationFrame(frame);
+    }
+
+    ui.rafId = requestAnimationFrame(frame);
+  }
+
+  function updatePitchTickDOM(st) {
+    var pitchEl = document.querySelector('.sim-pitch');
+    var scoreHost = document.getElementById('sim-scoreboard-host');
+    var commHost = document.getElementById('sim-comm-host');
+    var timelineTabBtn = document.querySelector('[data-sim-tab="timeline"]');
+    if (!pitchEl || !scoreHost || !commHost) return false;
+
+    // Update scoreboard cleanly in place
+    scoreHost.innerHTML =
+      '<div class="match-row" style="margin-top:0">' +
+      '<div style="text-align:right"><div class="font-display" style="font-size:1.55rem;font-weight:800">' + st.homeTeam.name + '</div><div class="text-muted" style="font-size:0.75rem">' + st.formationHome + ' · ' + st.styleHome + '</div></div>' +
+      '<div style="text-align:center;min-width:130px"><div class="badge-accent">' + st.competitionLabel + ' · ' + (st.phase === 'FINISHED' ? 'FINAL' : st.minute + "'") + '</div><div class="font-display font-mono-tabular" style="font-size:2.6rem;font-weight:800;line-height:1.1">' + st.homeScore + ' - ' + st.awayScore + '</div>' + (st.shootoutKicks.length ? '<div class="text-amber" style="font-size:0.78rem;font-weight:700">PEN ' + st.homePenScore + ' - ' + st.awayPenScore + '</div>' : '') + '</div>' +
+      '<div style="text-align:left"><div class="font-display" style="font-size:1.55rem;font-weight:800">' + st.awayTeam.name + '</div><div class="text-muted" style="font-size:0.75rem">' + st.formationAway + ' · ' + st.styleAway + '</div></div>' +
+      '</div>';
+
+    // Update player stamina, rating, and highlight ring without destroying .pitch-node elements
+    var allActive = st.homeRoster.filter(function (r) { return r.onPitch && !r.redCard; })
+      .concat(st.awayRoster.filter(function (r) { return r.onPitch && !r.redCard; }));
+    var activeById = {};
+    allActive.forEach(function (ls) { activeById[ls.player.id] = ls; });
+
+    var pitchNodeIds = [];
+    pitchEl.querySelectorAll('.pitch-node').forEach(function (n) {
+      var pid = n.getAttribute('data-sim-player');
+      pitchNodeIds.push(pid);
+      var ls = activeById[pid];
+      if (!ls) return;
+      n.setAttribute('data-stamina', String(Math.round(ls.stamina)));
+      var shirt = n.querySelector('.pitch-shirt');
+      if (shirt) shirt.classList.toggle('highlighted', st.highlightedPlayerId === pid);
+      var rat = n.querySelector('.pitch-rating');
+      if (rat) {
+        rat.textContent = ls.rating.toFixed(1);
+        rat.classList.toggle('high', ls.rating >= 7.5);
+      }
+      var stamBar = n.querySelector('.pitch-stamina > div');
+      if (stamBar) stamBar.style.width = Math.round(ls.stamina) + '%';
+    });
+
+    // If a substitution or red card changed active players on pitch, rebuild pitch cleanly
+    if (pitchNodeIds.length !== allActive.length || allActive.some(function (ls) { return pitchNodeIds.indexOf(ls.player.id) < 0; })) {
+      return false;
+    }
+
+    // Update flash overlay
+    var oldFlash = pitchEl.querySelector('.pitch-flash');
+    if (oldFlash && oldFlash.parentNode) oldFlash.parentNode.removeChild(oldFlash);
+    if (st.activeFlash) {
+      var fd = document.createElement('div');
+      fd.className = 'pitch-flash';
+      fd.innerHTML = '<div class="badge-accent">' + st.activeFlash.title + '</div><div style="font-size:0.82rem;font-weight:700">' + st.activeFlash.subtitle + '</div>';
+      pitchEl.appendChild(fd);
+    }
+
+    // Update live commentary
+    commHost.innerHTML = '<strong>Latest Commentary</strong>' +
+      st.events.slice(0, 6).map(function (ev) {
+        return '<div class="card-subtle" style="padding:8px 12px;font-size:0.8rem"><span class="badge-accent" style="margin-right:8px">' + ev.minuteLabel + '</span>' + ev.text + '</div>';
+      }).join('');
+
+    if (timelineTabBtn) timelineTabBtn.textContent = 'Timeline (' + st.events.length + ')';
+    return true;
+  }
+
   function renderPitchHTML(st) {
     var slotsH = window.STR_DATA.FORMATION_SLOTS[st.formationHome] || window.STR_DATA.FORMATION_SLOTS['4-3-3'];
     var slotsA = window.STR_DATA.FORMATION_SLOTS[st.formationAway] || window.STR_DATA.FORMATION_SLOTS['4-3-3'];
@@ -673,12 +959,13 @@
     var nodes = '';
     activeH.slice(0, 11).forEach(function (ls, i) {
       var sl = slotsH[i] || slotsH[slotsH.length - 1];
-      var left = (sl.x * 0.88).toFixed(1);
-      var top = sl.y.toFixed(1);
+      var bx = (sl.x * 0.88).toFixed(1);
+      var by = sl.y.toFixed(1);
+      var cur = ui.animPositions[ls.player.id] || { x: Number(bx), y: Number(by) };
       var bg = st.homeTeam.primaryColor || '#e11d48';
       var fg = st.homeTeam.secondaryColor || '#ffffff';
-      nodes += '<button class="pitch-node" data-sim-player="' + ls.player.id + '" style="left:' + left + '%;top:' + top + '%" title="' + ls.player.name + ' (' + ls.rating.toFixed(1) + ')">' +
-        '<div class="pitch-shirt" style="background:' + bg + ';color:' + fg + ';">' + ls.player.jersey +
+      nodes += '<button class="pitch-node" data-sim-player="' + ls.player.id + '" data-side="home" data-role="' + ls.player.roleGroup + '" data-bx="' + bx + '" data-by="' + by + '" data-stamina="' + Math.round(ls.stamina) + '" style="left:' + cur.x.toFixed(2) + '%;top:' + cur.y.toFixed(2) + '%" title="' + ls.player.name + ' (' + ls.rating.toFixed(1) + ')">' +
+        '<div class="pitch-shirt' + (st.highlightedPlayerId === ls.player.id ? ' highlighted' : '') + '" style="background:' + bg + ';color:' + fg + ';">' + ls.player.jersey +
         '<span class="pitch-rating ' + (ls.rating >= 7.5 ? 'high' : '') + '">' + ls.rating.toFixed(1) + '</span></div>' +
         '<div class="pitch-stamina"><div style="width:' + Math.round(ls.stamina) + '%"></div></div>' +
         '<span class="pitch-name">' + ls.player.shortName + '</span></button>';
@@ -686,12 +973,13 @@
 
     activeA.slice(0, 11).forEach(function (ls, i) {
       var sl = slotsA[i] || slotsA[slotsA.length - 1];
-      var left = (100 - sl.x * 0.88).toFixed(1);
-      var top = (100 - sl.y).toFixed(1);
+      var bx = (100 - sl.x * 0.88).toFixed(1);
+      var by = (100 - sl.y).toFixed(1);
+      var cur = ui.animPositions[ls.player.id] || { x: Number(bx), y: Number(by) };
       var bg = st.awayTeam.primaryColor || '#38bdf8';
       var fg = st.awayTeam.secondaryColor || '#0f172a';
-      nodes += '<button class="pitch-node" data-sim-player="' + ls.player.id + '" style="left:' + left + '%;top:' + top + '%" title="' + ls.player.name + ' (' + ls.rating.toFixed(1) + ')">' +
-        '<div class="pitch-shirt" style="background:' + bg + ';color:' + fg + ';">' + ls.player.jersey +
+      nodes += '<button class="pitch-node" data-sim-player="' + ls.player.id + '" data-side="away" data-role="' + ls.player.roleGroup + '" data-bx="' + bx + '" data-by="' + by + '" data-stamina="' + Math.round(ls.stamina) + '" style="left:' + cur.x.toFixed(2) + '%;top:' + cur.y.toFixed(2) + '%" title="' + ls.player.name + ' (' + ls.rating.toFixed(1) + ')">' +
+        '<div class="pitch-shirt' + (st.highlightedPlayerId === ls.player.id ? ' highlighted' : '') + '" style="background:' + bg + ';color:' + fg + ';">' + ls.player.jersey +
         '<span class="pitch-rating ' + (ls.rating >= 7.5 ? 'high' : '') + '">' + ls.rating.toFixed(1) + '</span></div>' +
         '<div class="pitch-stamina"><div style="width:' + Math.round(ls.stamina) + '%"></div></div>' +
         '<span class="pitch-name">' + ls.player.shortName + '</span></button>';
@@ -711,9 +999,11 @@
       '<rect x="85" y="16" width="13" height="32" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>' +
       '<rect x="2" y="24" width="5" height="16" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.35"/>' +
       '<rect x="93" y="24" width="5" height="16" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.35"/>' +
+      '<line id="pitch-trail" x1="50" y1="32" x2="50" y2="32" stroke="rgba(255,255,255,0.85)" stroke-width="0.55" stroke-dasharray="1.1 0.7" stroke-linecap="round" stroke-opacity="0"/>' +
+      '<circle id="pitch-ring" cx="50" cy="32" r="2" fill="none" stroke="#FACC15" stroke-width="0.45" stroke-opacity="0"/>' +
       '</svg>' +
       nodes +
-      '<div class="pitch-ball" style="left:' + st.ballPos.x + '%;top:' + st.ballPos.y + '%"></div>' +
+      '<div class="pitch-ball" style="left:' + ui.ballAnim.x.toFixed(2) + '%;top:' + ui.ballAnim.y.toFixed(2) + '%"></div>' +
       flash +
       '</div>';
   }
@@ -786,7 +1076,7 @@
           return '<button class="tab-chip ' + (st.mentalityHome === m ? 'active' : '') + '" data-sim-mentality="' + m + '">' + m + '</button>';
         }).join('') +
         '</div></div>' +
-        '<div class="card-sm stack-sm"><strong>Latest Commentary</strong>' +
+        '<div id="sim-comm-host" class="card-sm stack-sm"><strong>Latest Commentary</strong>' +
         st.events.slice(0, 6).map(function (ev) {
           return '<div class="card-subtle" style="padding:8px 12px;font-size:0.8rem"><span class="badge-accent" style="margin-right:8px">' + ev.minuteLabel + '</span>' + ev.text + '</div>';
         }).join('') +
@@ -899,7 +1189,7 @@
       '<div class="grid-2"><select class="select" id="sim-away-form">' + formOpts(ui.formationAway) + '</select><select class="select" id="sim-away-style">' + styleOpts(ui.styleAway) + '</select></div></div>' +
       '</div></div>' +
       specialModePanel +
-      '<div class="card" style="background:linear-gradient(120deg,#0f1219,#17111b);color:#fff">' +
+      '<div id="sim-scoreboard-host" class="card" style="background:linear-gradient(120deg,#0f1219,#17111b);color:#fff">' +
       '<div class="match-row" style="margin-top:0">' +
       '<div style="text-align:right"><div class="font-display" style="font-size:1.55rem;font-weight:800">' + st.homeTeam.name + '</div><div class="text-muted" style="font-size:0.75rem">' + st.formationHome + ' · ' + st.styleHome + '</div></div>' +
       '<div style="text-align:center;min-width:130px"><div class="badge-accent">' + st.competitionLabel + ' · ' + (st.phase === 'FINISHED' ? 'FINAL' : st.minute + "'") + '</div><div class="font-display font-mono-tabular" style="font-size:2.6rem;font-weight:800;line-height:1.1">' + st.homeScore + ' - ' + st.awayScore + '</div>' + (st.shootoutKicks.length ? '<div class="text-amber" style="font-size:0.78rem;font-weight:700">PEN ' + st.homePenScore + ' - ' + st.awayPenScore + '</div>' : '') + '</div>' +
@@ -910,6 +1200,8 @@
         return '<button class="tab-chip ' + (ui.subTab === t[0] ? 'active' : '') + '" data-sim-tab="' + t[0] + '">' + t[1] + '</button>';
       }).join('') +
       '</div>' + subContent + '</div>';
+
+    if (ui.subTab === 'pitch') ensurePitchAnimLoop(); else stopPitchAnim();
 
     // Wire events
     el.querySelectorAll('[data-sim-mode]').forEach(function (b) {
